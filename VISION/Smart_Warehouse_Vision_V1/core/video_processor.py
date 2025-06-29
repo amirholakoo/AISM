@@ -118,13 +118,15 @@ class VideoProcessor:
         """
         while self.is_running:
             try:
+                logger.info(f"Attempting to open video source with cv2.VideoCapture: {source}")
                 self.cap = cv2.VideoCapture(source)
+
                 if not self.cap.isOpened():
                     st.error(f"Cannot open source: {source}. Retrying in 5 seconds...")
-                    logger.warning(f"Failed to open video source: {source}. Retrying...")
+                    logger.warning(f"Failed to open video source: {source}. isOpened() returned False.")
                     time.sleep(5)
                     continue
-                    
+                
                 logger.info(f"Successfully opened video source: {source}")
                 frame_idx = 0
                 while self.is_running and self.cap.isOpened():
@@ -183,8 +185,12 @@ class VideoProcessor:
         
         Args:
             frame: OpenCV frame to draw on
-            line_x: X coordinate of counting line (not drawn for demo)
+            line_x: X coordinate of counting line
         """
+        # Draw the counting line
+        height, _, _ = frame.shape
+        cv2.line(frame, (line_x, 0), (line_x, height), (0, 0, 255), 2)  # Red line, thickness 2
+
         # Draw bounding boxes and track IDs
         for track_id, track_data in self.tracker.tracks.items():
             x1, y1, x2, y2 = track_data['bbox']
@@ -196,8 +202,6 @@ class VideoProcessor:
             # Draw track ID
             cv2.putText(frame, f"ID:{track_id}", (x1, y1 - 10), 
                        cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
-        
-        # Note: Counting line not drawn for demo version
         
         # Draw statistics
         counts_text = f"Loaded: {self.tracker.counts['in']} | Unloaded: {self.tracker.counts['out']}"

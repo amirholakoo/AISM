@@ -51,7 +51,7 @@ Once the installation is complete, you can run the application with a single com
 2.  **Using the Tabs**:
 
     -   **Production (Live)**: This is the main tab for real-world use.
-        -   Enter the RTSP URL of your camera (e.g., `rtsp://192.168.1.101:8554/mystream`).
+        -   Enter the full URL of your camera's video stream (e.g., `http://192.168.1.100:5000/video_feed` or `rtsp://...`).
         -   Click "▶️ Start Processing" to begin live monitoring.
 
     -   **Demo (File)**: This tab is for testing the system.

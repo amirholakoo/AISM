@@ -59,6 +59,8 @@ class StreamlitUI:
         )
         st.title("📹 Smart Warehouse CV Dashboard")
         
+        self._render_sidebar()
+
         # Main application flow controller
         if st.session_state.running:
             self._render_live_display()
@@ -74,6 +76,19 @@ class StreamlitUI:
             with demo_tab:
                 self._render_processing_interface(is_demo=True)
 
+    def _render_sidebar(self):
+        """Render the sidebar with configuration options."""
+        with st.sidebar:
+            st.header("⚙️ Configuration")
+            self.line_x = st.number_input(
+                "Counting Line (X-coordinate)", 
+                min_value=0, 
+                max_value=1920, # Assuming max video width
+                value=WarehouseConfig.LINE_X_DEFAULT, 
+                step=10,
+                help="Set the vertical line for counting. Objects crossing this line will be logged."
+            )
+
     def _render_processing_interface(self, is_demo: bool):
         """
         Render the main processing interface for either live or demo mode.
@@ -86,11 +101,11 @@ class StreamlitUI:
             st.info(f"**Demo Mode:** Processing the local file `{source}`.")
         else:
             source = st.text_input(
-                "RTSP Stream URL", 
-                "rtsp://<RASPBERRY_PI_IP>:<PORT>/<STREAM_NAME>",
-                key="rtsp_url" # Unique key for this input
+                "Live Stream URL", 
+                "http://192.168.144.170:5000/video_feed",
+                key="stream_url"
             )
-            st.info("**Live Mode:** Enter the RTSP stream URL from your camera.")
+            st.info("**Live Mode:** Enter the camera's full stream URL (e.g., RTSP or HTTP).")
 
         # The "Start" button is the only control needed here now
         if st.button(
