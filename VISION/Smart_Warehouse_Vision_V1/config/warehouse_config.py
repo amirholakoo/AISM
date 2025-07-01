@@ -33,11 +33,11 @@ class WarehouseConfig:
     EMPTY_PALLETE_CLASS = 0             # Class representing an empty forklift
 
     # Detection Parameters
-    MODEL_INPUT_SIZE_DEFAULT = 1280  # New: Default model input size
+    MODEL_INPUT_SIZE_DEFAULT = 640  # New: Default model input size
     LINE_X_DEFAULT = 900
-    FRAME_SKIP_DEFAULT = 3
+    FRAME_SKIP_DEFAULT = 6
     IOU_THRESH_DEFAULT = 0.3
-    CONF_THRESH_DEFAULT = 0.3
+    CONF_THRESH_DEFAULT = 0.4
     EVENT_COOLDOWN_SECONDS = 5  # New: Cooldown in seconds between events for the same track
     
     # System Configuration

@@ -1,0 +1,24 @@
+# Essential packages for Smart Warehouse CV Dashboard Demo - Raspberry Pi Version
+# Modified for ARM architecture compatibility
+
+# Core CV and ML packages
+torch>=2.0.0
+torchvision>=0.15.0
+ultralytics>=8.0.0
+opencv-python>=4.8.0
+
+# Streamlit and web interface
+streamlit>=1.28.0
+
+# Data processing
+numpy>=1.21.0
+pandas>=1.5.0
+pillow>=9.0.0
+
+# System utilities
+PyYAML>=6.0
+requests>=2.28.0
+tqdm>=4.64.0
+
+# Additional packages for Raspberry Pi
+imutils>=0.5.4 

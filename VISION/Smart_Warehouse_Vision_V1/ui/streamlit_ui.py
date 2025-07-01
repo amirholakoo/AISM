@@ -171,7 +171,8 @@ class StreamlitUI:
                 df = df.sort_values(by='Timestamp', ascending=False).reset_index(drop=True)
                 events_placeholder.dataframe(df, use_container_width=True)
             
-            time.sleep(0.1)
+            # Small delay to prevent excessive CPU usage
+            time.sleep(0.02)
         
         # Handle case where processing stopped unexpectedly
         if st.session_state.running:
