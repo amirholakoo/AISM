@@ -136,6 +136,18 @@ class VideoProcessor:
     def _capture_loop_picamera(self, camera_index: int):
         """Continuously capture frames from a Raspberry Pi camera."""
         logger.info(f"Initializing picamera2 for camera index {camera_index}.")
+        
+        # --- Start of Debugging Code ---
+        try:
+            available_cameras = Picamera2.global_camera_info()
+            if not available_cameras:
+                logger.warning("picamera2 found NO cameras. Ensure the camera is connected and the system is configured correctly.")
+            else:
+                logger.info(f"picamera2 found the following cameras: {available_cameras}")
+        except Exception as e:
+            logger.error(f"Error while probing for cameras: {e}")
+        # --- End of Debugging Code ---
+
         picam2 = None
         try:
             picam2 = Picamera2(camera_num=camera_index)
