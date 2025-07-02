@@ -120,28 +120,27 @@ class VideoProcessor:
 
     def _capture_loop(self, source):
         """Dispatcher for video capture. Selects picamera2 or cv2 based on availability and source type."""
-        use_picamera = False
-        if IS_PICAMERA_AVAILABLE:
-            try:
-                int(source)
-                use_picamera = True
-            except ValueError:
-                pass
-        
-        if use_picamera:
-            self._capture_loop_picamera(int(source))
+        # Use picamera if the special identifier is passed and the library is available.
+        if source == "picamera" and IS_PICAMERA_AVAILABLE:
+            self._capture_loop_picamera()
         else:
+            # If Pi Camera was selected but the library is missing, log an error.
+            if source == "picamera":
+                logger.error("Pi Camera was selected, but the picamera2 library is not available. Please install it.")
+                st.error("Pi Camera was selected, but the `picamera2` library is not installed.")
+                # We stop the thread by returning, as there's no valid source.
+                return
             self._capture_loop_cv2(source)
 
-    def _capture_loop_picamera(self, camera_index: int):
-        """Continuously capture frames from a Raspberry Pi camera."""
-        logger.info(f"Initializing picamera2 for camera index {camera_index}.")
+    def _capture_loop_picamera(self):
+        """Continuously capture frames from the default Raspberry Pi camera."""
+        logger.info("Initializing default Raspberry Pi camera.")
         
         # --- Start of Debugging Code ---
         try:
             available_cameras = Picamera2.global_camera_info()
             if not available_cameras:
-                logger.warning("picamera2 found NO cameras. Ensure the camera is connected and the system is configured correctly.")
+                logger.warning("picamera2 found NO cameras. This is a system-level issue that may require configuration changes.")
             else:
                 logger.info(f"picamera2 found the following cameras: {available_cameras}")
         except Exception as e:
@@ -150,7 +149,8 @@ class VideoProcessor:
 
         picam2 = None
         try:
-            picam2 = Picamera2(camera_num=camera_index)
+            # Initialize with NO arguments to find the default camera automatically, just like rpicam-hello.
+            picam2 = Picamera2()
             # Configure for high performance: 1280x720 is a good balance.
             config = picam2.create_video_configuration(main={"size": (1280, 720), "format": "RGB888"})
             picam2.configure(config)

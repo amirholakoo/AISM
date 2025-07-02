@@ -100,12 +100,17 @@ class StreamlitUI:
             source = "output_filtered_3.mp4"
             st.info(f"**Demo Mode:** Processing the local file `{source}`.")
         else:
-            source = st.text_input(
-                "Video Source", 
-                "0",
-                key="stream_url"
-            )
-            st.info("**Live Mode:** Enter a stream URL, video file path, or camera index (e.g., `0` for a PiCamera).")
+            use_pi_camera = st.checkbox("Use Raspberry Pi Camera", value=True, help="If checked, the application will attempt to use the default camera connected to this Raspberry Pi.")
+            
+            if use_pi_camera:
+                source = "picamera" # Special identifier for the video processor
+            else:
+                source = st.text_input(
+                    "Video Source (URL or File Path)",
+                    "http://192.168.144.170:5000/video_feed",
+                    key="stream_url",
+                    help="Enter a network stream URL (RTSP/HTTP) or a path to a local video file."
+                )
 
         # The "Start" button is the only control needed here now
         if st.button(
