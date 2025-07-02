@@ -160,15 +160,16 @@ class VideoProcessor:
             logger.info("picamera2 started successfully.")
 
             while self.is_running:
-                frame_rgb = picam2.capture_array()
-                frame_bgr = cv2.cvtColor(frame_rgb, cv2.COLOR_RGB2BGR)
+                # The picamera2 library provides the frame in the BGR format that OpenCV expects by default.
+                # No color conversion is needed here.
+                frame = picam2.capture_array()
                 
                 if self.frame_queue.full():
                     try:
                         self.frame_queue.get_nowait()
                     except queue.Empty:
                         pass
-                self.frame_queue.put(frame_bgr)
+                self.frame_queue.put(frame)
         except Exception as e:
             logger.error(f"An exception occurred in the picamera capture loop: {e}", exc_info=True)
             st.error(f"PiCamera Error: {e}. Please ensure the camera is connected and enabled.")
