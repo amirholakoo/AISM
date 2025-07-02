@@ -151,6 +151,10 @@ class StreamlitUI:
             st.session_state.summary_data = None
             st.session_state.manual_edit_mode = False
             
+            # Create a new VideoProcessor instance each time to ensure a clean state
+            self.vp = VideoProcessor()
+            st.session_state.vp = self.vp
+
             self.vp.start_processing(
                 source, self.weights, self.line_x, 
                 self.skip, self.iou, self.conf, self.location,
