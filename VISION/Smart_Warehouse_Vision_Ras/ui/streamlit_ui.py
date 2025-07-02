@@ -89,6 +89,34 @@ class StreamlitUI:
                 help="Set the vertical line for counting. Objects crossing this line will be logged."
             )
 
+            st.markdown("---")
+            st.subheader("Performance Tuning")
+
+            # Create a mapping from integer value back to the display name for the default index
+            resolution_display_names = list(WarehouseConfig.RESOLUTION_OPTIONS.keys())
+            resolution_values = list(WarehouseConfig.RESOLUTION_OPTIONS.values())
+            try:
+                default_index = resolution_values.index(self.model_input_size)
+            except ValueError:
+                default_index = 0 # Fallback to the first option
+
+            selected_resolution_display = st.selectbox(
+                "Model Resolution",
+                options=resolution_display_names,
+                index=default_index,
+                help="Higher resolutions are more accurate but slower. Lower resolutions are faster but may miss small objects."
+            )
+            self.model_input_size = WarehouseConfig.RESOLUTION_OPTIONS[selected_resolution_display]
+
+            self.skip = st.slider(
+                "Frame Skip",
+                min_value=1,
+                max_value=30,
+                value=self.skip,
+                step=1,
+                help="Higher values increase performance by processing fewer frames per second."
+            )
+
     def _render_processing_interface(self, is_demo: bool):
         """
         Render the main processing interface for either live or demo mode.

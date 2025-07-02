@@ -33,7 +33,12 @@ class WarehouseConfig:
     EMPTY_PALLETE_CLASS = 0             # Class representing an empty forklift
 
     # Detection Parameters
-    MODEL_INPUT_SIZE_DEFAULT = 640  # New: Default model input size
+    RESOLUTION_OPTIONS = {
+        "Low (640x640)": 640,
+        "Medium (960x960)": 960,
+        "High (1280x1280)": 1280,
+    }
+    MODEL_INPUT_SIZE_DEFAULT = 640
     LINE_X_DEFAULT = 900
     FRAME_SKIP_DEFAULT = 6
     IOU_THRESH_DEFAULT = 0.3
