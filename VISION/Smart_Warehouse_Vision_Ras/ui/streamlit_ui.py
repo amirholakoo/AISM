@@ -37,16 +37,16 @@ class StreamlitUI:
             st.session_state.json_ready = False
         if 'manual_edit_mode' not in st.session_state:
             st.session_state.manual_edit_mode = False
+        if 'model_input_size' not in st.session_state:
+            st.session_state.model_input_size = WarehouseConfig.MODEL_INPUT_SIZE_DEFAULT
+        if 'skip' not in st.session_state:
+            st.session_state.skip = WarehouseConfig.FRAME_SKIP_DEFAULT
             
         self.vp: VideoProcessor = st.session_state.vp
         
-        # Restore hardcoded settings, removing the dynamic sidebar
-        self.source = "output_filtered_3.mp4"
+        # Hardcoded settings that are not user-configurable
         self.location = "انبار سنگین"  # Heavy Warehouse in Persian
         self.weights = WarehouseConfig.WEIGHTS_DEFAULT
-        self.model_input_size = WarehouseConfig.MODEL_INPUT_SIZE_DEFAULT
-        self.line_x = WarehouseConfig.LINE_X_DEFAULT
-        self.skip = WarehouseConfig.FRAME_SKIP_DEFAULT
         self.iou = WarehouseConfig.IOU_THRESH_DEFAULT
         self.conf = WarehouseConfig.CONF_THRESH_DEFAULT
 
@@ -96,7 +96,7 @@ class StreamlitUI:
             resolution_display_names = list(WarehouseConfig.RESOLUTION_OPTIONS.keys())
             resolution_values = list(WarehouseConfig.RESOLUTION_OPTIONS.values())
             try:
-                default_index = resolution_values.index(self.model_input_size)
+                default_index = resolution_values.index(st.session_state.model_input_size)
             except ValueError:
                 default_index = 0 # Fallback to the first option
 
@@ -106,13 +106,13 @@ class StreamlitUI:
                 index=default_index,
                 help="Higher resolutions are more accurate but slower. Lower resolutions are faster but may miss small objects."
             )
-            self.model_input_size = WarehouseConfig.RESOLUTION_OPTIONS[selected_resolution_display]
+            st.session_state.model_input_size = WarehouseConfig.RESOLUTION_OPTIONS[selected_resolution_display]
 
-            self.skip = st.slider(
+            st.session_state.skip = st.slider(
                 "Frame Skip",
                 min_value=1,
                 max_value=30,
-                value=self.skip,
+                value=st.session_state.skip,
                 step=1,
                 help="Higher values increase performance by processing fewer frames per second."
             )
@@ -156,9 +156,14 @@ class StreamlitUI:
             st.session_state.vp = self.vp
 
             self.vp.start_processing(
-                source, self.weights, self.line_x, 
-                self.skip, self.iou, self.conf, self.location,
-                self.model_input_size
+                source, 
+                self.weights, 
+                self.line_x, 
+                st.session_state.skip, 
+                self.iou, 
+                self.conf, 
+                self.location,
+                st.session_state.model_input_size
             )
             st.rerun()
 
