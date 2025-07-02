@@ -2,69 +2,92 @@
 
 This application uses computer vision to monitor a warehouse environment in real-time. It leverages the YOLOv8 object detection model to identify and track forklifts, automatically counting them as they are loaded or unloaded across a designated line.
 
+This version is optimized for deployment on a **Raspberry Pi** with a connected camera module, but can also run on a standard computer using a video file or network stream.
+
 ## Key Features
 
-- **Real-Time Processing**: Connects to any RTSP camera stream for live, 24/7 monitoring of warehouse activity.
-- **Demo Mode**: Allows for easy testing and validation of the detection model using a local video file.
-- **GPU Acceleration**: Automatically utilizes a CUDA-enabled GPU for high-performance, high-accuracy video analysis.
-- **Event Logging**: Every "loaded" and "unloaded" event is logged to a persistent `warehouse_events.log` file for auditing.
-- **Event Snapshots**: Captures and saves a tagged image of every single counting event to the `snapshots/` directory, providing visual proof.
-- **Resilient Connectivity**: Automatically attempts to reconnect to the live video stream if the connection is lost.
-- **Live UI Dashboard**: A user-friendly Streamlit interface displays the live video feed, real-time statistics, and a live log of all counting events.
-- **Manual Correction**: A post-session workflow allows users to manually review and correct any detection if needed.
+- **Multi-Platform Support**:
+    - **Raspberry Pi**: Utilizes the `picamera2` library for direct, high-performance camera access.
+    - **Standard Systems**: Can process any RTSP/HTTP stream or local video file via OpenCV.
+- **Live UI Dashboard**: A user-friendly Streamlit interface displays:
+    - The live video feed.
+    - Real-time "Loaded/Unloaded" counts.
+    - Real-time processing speed (FPS).
+    - A live log of all counting events.
+- **Real-Time Performance Tuning**:
+    - **Model Resolution**: Adjust the model's input resolution on the fly to balance accuracy and speed.
+    - **Frame Skip**: Change how many frames are skipped to increase FPS.
+- **Manual Correction Workflow**: After a processing session, users can manually review and correct the product type for each detected event before saving the final summary.
+- **GPU Acceleration**: Automatically utilizes a CUDA-enabled GPU if available on the host machine.
+- **Resilient Connectivity**: Automatically attempts to reconnect to a live video stream if the connection is lost.
 
-## Installation
+## Setup & Installation
 
-To get the application up and running, follow these steps.
+### On a Standard Computer (for Development)
 
-1.  **Set up a Python Environment**: It is highly recommended to use a virtual environment to avoid conflicts with other projects.
-
+1.  **Create a Virtual Environment**:
     ```bash
-    # Create the virtual environment
     python3 -m venv venv
-
-    # Activate it (on Linux/macOS)
     source venv/bin/activate
-
-    # On Windows, use:
-    # venv\Scripts\activate
     ```
 
-2.  **Install Dependencies**: Install all required Python packages using the `requirements.txt` file.
-
+2.  **Install Dependencies**:
     ```bash
     pip install -r requirements.txt
     ```
 
-## How to Run and Use
+### On a Raspberry Pi (for Deployment)
 
-Once the installation is complete, you can run the application with a single command.
+Setting up on a Raspberry Pi requires installing system-level dependencies in addition to the Python packages.
 
-1.  **Start the Application**:
+1.  **Install System Dependencies**:
+    These packages are required for `picamera2` to build and run correctly.
+    ```bash
+    sudo apt-get update
+    sudo apt-get install -y build-essential libcamera-dev python3-libcamera
+    ```
 
+2.  **Create the Virtual Environment (with System Access)**:
+    This is the most critical step. We create a `venv` with a special flag that allows it to access the system-level `python3-libcamera` we just installed.
+    ```bash
+    python3 -m venv --system-site-packages venv
+    ```
+
+3.  **Activate the Environment**:
+    ```bash
+    source venv/bin/activate
+    ```
+
+4.  **Install Raspberry Pi Python Dependencies**:
+    This requirements file is tailored for the Raspberry Pi's architecture.
+    ```bash
+    pip install -r requirements_rpi.txt
+    ```
+    *Note: If you encounter a `numpy` binary incompatibility error upon first run, force a re-installation of the key vision libraries with `pip install --force-reinstall --no-cache-dir numpy opencv-python-headless simplejpeg`.*
+
+## How to Run
+
+1.  **Activate your virtual environment**:
+    ```bash
+    source venv/bin/activate
+    ```
+
+2.  **Start the Application**:
     ```bash
     streamlit run main.py
     ```
-
     This will open the application dashboard in your web browser.
 
-2.  **Using the Tabs**:
+## Using the Application
 
-    -   **Production (Live)**: This is the main tab for real-world use.
-        -   Enter the full URL of your camera's video stream (e.g., `http://192.168.1.100:5000/video_feed` or `rtsp://...`).
-        -   Click "▶️ Start Processing" to begin live monitoring.
-
-    -   **Demo (File)**: This tab is for testing the system.
-        -   **Important**: You must first download the demo video file (`output_filtered_3.mp4`) from [this link](https://drive.google.com/file/d/1aX3nUsxQ-xzsFmH9okSezTpEvXDs7_iB/view?usp=sharing).
-        -   Place the downloaded file in the main project directory.
-        -   Once the file is in place, simply click "▶️ Start Processing" to see how the system works.
-
-3.  **Monitoring the System**:
-
-    -   While running, the live video feed will be displayed on the left.
-    -   On the right, you will see the running counts and a live table of all crossing events.
-    -   After stopping a session, you will be presented with a summary and the option to save the results to a final JSON file.
-
-4.  **Checking Logs and Snapshots**:
-    -   All detailed logs are saved in the `warehouse_events.log` file in the main project directory.
-    -   All event-triggered images are saved in the `snapshots/` directory.
+- **Production (Live) Tab**:
+    - **On Raspberry Pi**: Check the "Use Raspberry Pi Camera" box to use the connected camera module.
+    - **On a Standard Computer**: Uncheck the box and enter a network stream URL (RTSP/HTTP) or a path to a local video file.
+- **Demo (File) Tab**:
+    - This tab runs the system on a pre-packaged local video file (`output_filtered_3.mp4`) for easy testing.
+- **Sidebar Controls**:
+    - Use the sidebar to adjust the counting line, model resolution, and frame skip rate before starting the processing.
+- **Stopping and Saving**:
+    - Click "⏹️ Stop Processing" to end a session.
+    - You will be presented with a summary of the events.
+    - You can choose to "✅ Confirm & Save" the results directly to a timestamped JSON file, or enter the "✏️ Manual Edit" workflow to make corrections before saving.
