@@ -19,7 +19,7 @@ class WarehouseConfig:
     }
     
     # Model Configuration
-    WEIGHTS_DEFAULT = 'pallete_yolov8n.pt'  # Ensure you have this weights file
+    WEIGHTS_DEFAULT = 'best_yolov11n.pt'  # Ensure you have this weights file
     
     # New Pallete Model Class Definitions
     # Assuming class IDs are 0: empty, 1: sulfat, 2: pack_material, 3: neshaste
