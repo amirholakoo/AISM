@@ -32,6 +32,17 @@ sudo apt update
 sudo apt install python3-pip python3-flask python3-serial minicom
 ````
 
+```
+Flask==2.0.1
+Flask-SQLAlchemy==2.5.1
+pyserial==3.5
+python-dotenv==0.19.0
+requests==2.26.0
+gunicorn==20.1.0
+pytest==6.2.5
+python-dateutil==2.8.2
+````
+
 ---
 
 ## 🔌 Wiring (if using GPIO UART)
