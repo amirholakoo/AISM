@@ -21,4 +21,17 @@ requests>=2.28.0
 tqdm>=4.64.0
 
 # Additional packages for Raspberry Pi
-imutils>=0.5.4 
+imutils>=0.5.4
+
+# Additional dependencies for specific models or features
+# e.g., scipy for certain tracking algorithms
+# some_other_library
+# ... etc.
+
+# For PiCamera support
+picamera2
+
+# Additional dependencies for the FastAPI server
+uvicorn
+fastapi
+python-multipart 

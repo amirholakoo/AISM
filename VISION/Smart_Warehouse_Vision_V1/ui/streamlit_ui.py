@@ -150,7 +150,7 @@ class StreamlitUI:
             if self.vp.latest_frame is not None:
                 frame_placeholder.image(
                     cv2.cvtColor(self.vp.latest_frame, cv2.COLOR_BGR2RGB), 
-                    use_column_width=True
+                    use_container_width=True
                 )
             
             # Display current statistics
@@ -171,8 +171,7 @@ class StreamlitUI:
                 df = df.sort_values(by='Timestamp', ascending=False).reset_index(drop=True)
                 events_placeholder.dataframe(df, use_container_width=True)
             
-            # Small delay to prevent excessive CPU usage
-            time.sleep(0.02)
+            time.sleep(0.1)
         
         # Handle case where processing stopped unexpectedly
         if st.session_state.running:

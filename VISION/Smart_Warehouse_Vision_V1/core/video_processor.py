@@ -10,7 +10,6 @@ from datetime import datetime
 from typing import Dict
 import logging
 import torch
-import queue
 
 import cv2
 import streamlit as st
@@ -32,13 +31,11 @@ class VideoProcessor:
     def __init__(self):
         """Initialize video processor with default state."""
         self.model = None
+        self.cap = None
         self.latest_frame = None
         self.is_running = False
         self.tracker = ProductTracker()
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
-        self.frame_queue = queue.Queue(maxsize=1)  # Limit queue size
-        self.processing_thread = None
-        self.capture_thread = None
         logger.info(f"Using device: {self.device}")
 
     def initialize_model(self, weights_path):
@@ -82,12 +79,11 @@ class VideoProcessor:
         self.is_running = True
         
         # Start processing in daemon thread
-        self.processing_thread = threading.Thread(
+        threading.Thread(
             target=self._processing_loop,
             args=(source, line_x, frame_skip, iou_thresh, conf_thresh, location, model_input_size),
             daemon=True
-        )
-        self.processing_thread.start()
+        ).start()
 
     def stop_processing(self):
         """
@@ -97,58 +93,15 @@ class VideoProcessor:
             Dict: Session summary with events and statistics
         """
         self.is_running = False
+        time.sleep(0.5)  # Allow processing loop to finish
         
-        # Wait for threads to finish
-        if self.capture_thread:
-            self.capture_thread.join()
-        if self.processing_thread:
-            self.processing_thread.join()
+        if self.cap:
+            self.cap.release()
+            self.cap = None
             
         events = list(self.tracker.events)
         counts = dict(self.tracker.counts)
         return self._create_session_summary(events, counts)
-
-    def _capture_loop(self, source):
-        """Continuously capture frames from the source and put them in a queue."""
-        cap = None
-        while self.is_running:
-            try:
-                if cap is None:
-                    logger.info(f"Attempting to open video source with cv2.VideoCapture: {source}")
-                    cap = cv2.VideoCapture(source)
-                    if not cap.isOpened():
-                        logger.warning(f"Failed to open video source: {source}. isOpened() returned False. Retrying in 5s.")
-                        cap.release()
-                        cap = None
-                        time.sleep(5)
-                        continue
-                    logger.info(f"Successfully opened video source: {source}")
-
-                ret, frame = cap.read()
-                if not ret:
-                    logger.warning("Stream ended or connection lost. Attempting to reconnect...")
-                    cap.release()
-                    cap = None
-                    time.sleep(1) # Wait a bit before trying to reconnect
-                    continue
-                
-                if self.frame_queue.full():
-                    try:
-                        self.frame_queue.get_nowait() 
-                    except queue.Empty:
-                        pass
-                self.frame_queue.put(frame)
-                
-            except Exception as e:
-                logger.error(f"An exception occurred in the capture loop: {e}", exc_info=True)
-                if cap:
-                    cap.release()
-                cap = None
-                time.sleep(5)
-
-        if cap:
-            cap.release()
-        logger.info("Capture loop stopped.")
 
     def _processing_loop(self, source, line_x, frame_skip, iou_thresh, conf_thresh, location, model_input_size):
         """
@@ -163,42 +116,67 @@ class VideoProcessor:
             location: Location name
             model_input_size: The input size for the model
         """
-        self.capture_thread = threading.Thread(target=self._capture_loop, args=(source,), daemon=True)
-        self.capture_thread.start()
-        
-        frame_idx = 0
         while self.is_running:
             try:
-                frame = self.frame_queue.get(timeout=1.0)
-                
-                frame_idx += 1
-                if frame_idx % frame_skip != 0:
+                logger.info(f"Attempting to open video source with cv2.VideoCapture: {source}")
+                self.cap = cv2.VideoCapture(source)
+
+                if not self.cap.isOpened():
+                    st.error(f"Cannot open source: {source}. Retrying in 5 seconds...")
+                    logger.warning(f"Failed to open video source: {source}. isOpened() returned False.")
+                    time.sleep(5)
                     continue
+                
+                logger.info(f"Successfully opened video source: {source}")
+                frame_idx = 0
+                while self.is_running and self.cap.isOpened():
+                    ret, frame = self.cap.read()
+                    if not ret:
+                        st.warning("Stream ended or connection lost. Attempting to reconnect...")
+                        logger.warning("Stream ended or connection lost. Breaking inner loop to reconnect.")
+                        break
+                        
+                    frame_idx += 1
+                    if frame_idx % frame_skip != 0:
+                        continue
+                        
+                    # Get current timestamp as a datetime object
+                    timestamp_obj = datetime.now(WarehouseConfig.TIMEZONE)
                     
-                timestamp_obj = datetime.now(WarehouseConfig.TIMEZONE)
-                
-                results = self.model(frame, imgsz=model_input_size, verbose=False)[0]
-                boxes = results.boxes.xyxy.cpu().numpy()
-                class_ids = results.boxes.cls.cpu().numpy()
-                confidences = results.boxes.conf.cpu().numpy()
-                
-                detections = [
-                    (tuple(box.astype(int)), int(class_id))
-                    for box, class_id, conf in zip(boxes, class_ids, confidences)
-                    if conf >= conf_thresh and int(class_id) in WarehouseConfig.VALID_CLASSES
-                ]
-                
-                self.tracker.update_tracks(detections, frame, line_x, iou_thresh, timestamp_obj, location)
-                
-                self._draw_visualization(frame, line_x)
-                
-                self.latest_frame = frame.copy()
-                
-            except queue.Empty:
-                continue
+                    # Run YOLO inference
+                    results = self.model(frame, imgsz=model_input_size, verbose=False)[0]
+                    boxes = results.boxes.xyxy.cpu().numpy()
+                    class_ids = results.boxes.cls.cpu().numpy()
+                    confidences = results.boxes.conf.cpu().numpy()
+                    
+                    # Filter detections by confidence and valid classes
+                    detections = [
+                        (tuple(box.astype(int)), int(class_id))
+                        for box, class_id, conf in zip(boxes, class_ids, confidences)
+                        if conf >= conf_thresh and int(class_id) in WarehouseConfig.VALID_CLASSES
+                    ]
+                    
+                    # Update tracker with new detections, now including the frame and datetime object
+                    self.tracker.update_tracks(detections, frame, line_x, iou_thresh, timestamp_obj, location)
+                    
+                    # Draw visualization on frame
+                    self._draw_visualization(frame, line_x)
+                    
+                    # Store latest frame for display
+                    self.latest_frame = frame.copy()
+                    
+                    # Small delay to prevent excessive CPU usage
+                    time.sleep(0.01)
+                    
             except Exception as e:
+                st.error(f"Processing loop error: {e}. Retrying in 5 seconds...")
                 logger.error(f"An exception occurred in the processing loop: {e}", exc_info=True)
+                time.sleep(5)
+            finally:
+                if self.cap:
+                    self.cap.release()
         
+        self.is_running = False
         logger.info("Processing stopped.")
 
     def _draw_visualization(self, frame, line_x):
