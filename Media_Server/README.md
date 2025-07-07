@@ -1,12 +1,22 @@
+# Full tutorial and docs:
 
+`https://github.com/Nerdy-Things/raspberry-pi-5-live-stream/`
+
+`https://www.raspberrypi.com/documentation/computers/camera_software.html`
+
+## Install ffmpeg
+
+`sudo apt-get install ffmpeg`
+
+## Install Mediamtx
 
 `http://github.com/bluenviron/mediamtx`
 
-## Go to Release page and look for arm64 version
+### Go to Release page and look for arm64 version
 
 `https://github.com/bluenviron/mediamtx/releases`
 
-## Copy link
+### Copy link
 
 `mkdir mediamtx`
 
@@ -18,7 +28,7 @@
 
 `nano mediamtx.yml`
 
-## Paste bash at the end (make sure # comment out all_others: at the end)
+### Paste bash at the end (make sure # comment out all_others: at the end)
 
 ```
   cam1:
@@ -27,5 +37,5 @@
 ```
 Save and Exit: `Ctrl + X, Y, Enter`
 
-## Run Media Server:
+### Run Media Server:
 `./mediamtx`
