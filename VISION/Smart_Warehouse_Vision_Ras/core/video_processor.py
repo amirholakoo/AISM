@@ -10,7 +10,6 @@ from datetime import datetime
 from typing import Dict
 import logging
 import torch
-import queue
 
 import cv2
 import streamlit as st
@@ -45,10 +44,9 @@ class VideoProcessor:
         self.is_running = False
         self.tracker = ProductTracker()
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
-        self.frame_queue = queue.Queue(maxsize=1)  # Limit queue size
         self.processing_thread = None
-        self.capture_thread = None
         self.processing_fps = 0
+        self.video_source = None # Will be cv2.VideoCapture or Picamera2 instance
         logger.info(f"Using device: {self.device}")
 
     def initialize_model(self, weights_path):
@@ -71,16 +69,14 @@ class VideoProcessor:
             logger.error(f"Failed to load model '{weights_path}': {e}", exc_info=True)
             return False
 
-    def start_processing(self, source, weights_path, line_x, frame_skip, iou_thresh, conf_thresh, location, model_input_size):
+    def start_processing(self, source, weights_path, frame_skip, conf_thresh, location, model_input_size):
         """
         Start video processing in a separate thread.
         
         Args:
-            source: Video source (camera index, file path, or stream URL)
+            source: Video source (camera index, file path, stream URL, or 'picamera')
             weights_path: Path to YOLO weights
-            line_x: X coordinate of counting line
             frame_skip: Number of frames to skip between processing
-            iou_thresh: IoU threshold for tracking
             conf_thresh: Confidence threshold for detection
             location: Location name for this processing session
             model_input_size: The input size for the model (e.g., 640, 1280)
@@ -94,7 +90,7 @@ class VideoProcessor:
         # Start processing in daemon thread
         self.processing_thread = threading.Thread(
             target=self._processing_loop,
-            args=(source, line_x, frame_skip, iou_thresh, conf_thresh, location, model_input_size),
+            args=(source, frame_skip, conf_thresh, location, model_input_size),
             daemon=True
         )
         self.processing_thread.start()
@@ -108,219 +104,193 @@ class VideoProcessor:
         """
         self.is_running = False
         
-        # Wait for threads to finish
-        if self.capture_thread and self.capture_thread.is_alive():
-            self.capture_thread.join()
+        # Wait for the processing thread to finish
         if self.processing_thread and self.processing_thread.is_alive():
             self.processing_thread.join()
+            
+        # Clean up video source
+        if self.video_source:
+            if IS_PICAMERA_AVAILABLE and isinstance(self.video_source, Picamera2):
+                if self.video_source.started:
+                    self.video_source.stop()
+            elif isinstance(self.video_source, cv2.VideoCapture):
+                self.video_source.release()
+            self.video_source = None
             
         events = list(self.tracker.events)
         counts = dict(self.tracker.counts)
         return self._create_session_summary(events, counts)
 
-    def _capture_loop(self, source):
-        """Dispatcher for video capture. Selects picamera2 or cv2 based on availability and source type."""
-        # Use picamera if the special identifier is passed and the library is available.
+    def _initialize_video_source(self, source):
+        """Initialize the correct video source based on input."""
         if source == "picamera" and IS_PICAMERA_AVAILABLE:
-            self._capture_loop_picamera()
-        else:
-            # If Pi Camera was selected but the library is missing, log an error.
-            if source == "picamera":
-                logger.error("Pi Camera was selected, but the picamera2 library is not available. Please install it.")
-                st.error("Pi Camera was selected, but the `picamera2` library is not installed.")
-                # We stop the thread by returning, as there's no valid source.
-                return
-            self._capture_loop_cv2(source)
-
-    def _capture_loop_picamera(self):
-        """Continuously capture frames from the default Raspberry Pi camera."""
-        logger.info("Initializing default Raspberry Pi camera.")
-        
-        # --- Start of Debugging Code ---
-        try:
-            available_cameras = Picamera2.global_camera_info()
-            if not available_cameras:
-                logger.warning("picamera2 found NO cameras. This is a system-level issue that may require configuration changes.")
-            else:
-                logger.info(f"picamera2 found the following cameras: {available_cameras}")
-        except Exception as e:
-            logger.error(f"Error while probing for cameras: {e}")
-        # --- End of Debugging Code ---
-
-        picam2 = None
-        try:
-            # Initialize with NO arguments to find the default camera automatically, just like rpicam-hello.
-            picam2 = Picamera2()
-            # Configure for high performance: 1280x720 is a good balance.
-            config = picam2.create_video_configuration(main={"size": (1280, 720), "format": "RGB888"})
-            picam2.configure(config)
-            
-            picam2.start()
-            time.sleep(2)  # Allow camera to auto-adjust
-            logger.info("picamera2 started successfully.")
-
-            while self.is_running:
-                # The picamera2 library provides the frame in the BGR format that OpenCV expects by default.
-                # No color conversion is needed here.
-                frame = picam2.capture_array()
-                
-                if self.frame_queue.full():
-                    try:
-                        self.frame_queue.get_nowait()
-                    except queue.Empty:
-                        pass
-                self.frame_queue.put(frame)
-        except Exception as e:
-            logger.error(f"An exception occurred in the picamera capture loop: {e}", exc_info=True)
-            st.error(f"PiCamera Error: {e}. Please ensure the camera is connected and enabled.")
-        finally:
-            if picam2 and picam2.started:
-                picam2.stop()
-            logger.info("picamera2 capture loop stopped.")
-
-    def _capture_loop_cv2(self, source):
-        """Continuously capture frames using OpenCV's VideoCapture."""
-        logger.info(f"Initializing cv2.VideoCapture for source: {source}")
-        cap = None
-        while self.is_running:
             try:
-                if cap is None:
-                    cap = cv2.VideoCapture(source)
-                    if not cap.isOpened():
-                        logger.warning(f"Failed to open source with cv2: {source}. Retrying in 5s.")
-                        cap.release()
-                        cap = None
-                        time.sleep(5)
-                        continue
-                    logger.info(f"cv2.VideoCapture opened source: {source}")
-
-                ret, frame = cap.read()
-                if not ret:
-                    logger.warning("Stream ended or connection lost. Re-initializing...")
-                    cap.release()
-                    cap = None
-                    time.sleep(1)
-                    continue
-                
-                if self.frame_queue.full():
-                    try:
-                        self.frame_queue.get_nowait()
-                    except queue.Empty:
-                        pass
-                self.frame_queue.put(frame)
-                
+                logger.info("Initializing Raspberry Pi camera.")
+                picam2 = Picamera2()
+                config = picam2.create_video_configuration(main={"size": (1280, 720), "format": "RGB888"})
+                picam2.configure(config)
+                picam2.start()
+                time.sleep(2.0) # Allow camera to warm up
+                self.video_source = picam2
+                logger.info("picamera2 started successfully.")
+                return True
             except Exception as e:
-                logger.error(f"An exception occurred in the cv2 capture loop: {e}", exc_info=True)
-                if cap:
-                    cap.release()
-                cap = None
-                time.sleep(5)
+                logger.error(f"Failed to initialize picamera2: {e}", exc_info=True)
+                st.error(f"PiCamera Error: {e}. Please ensure it is connected and enabled.")
+                return False
+        elif source == "picamera":
+             logger.error("Pi Camera was selected, but the picamera2 library is not available.")
+             st.error("Pi Camera was selected, but the `picamera2` library is not installed.")
+             return False
+        else:
+            try:
+                logger.info(f"Initializing cv2.VideoCapture for source: {source}")
+                self.video_source = cv2.VideoCapture(source)
+                if not self.video_source.isOpened():
+                    logger.warning(f"Failed to open source with cv2.VideoCapture: {source}")
+                    st.error(f"Cannot open video source: {source}")
+                    self.video_source.release()
+                    self.video_source = None
+                    return False
+                logger.info(f"cv2.VideoCapture opened source: {source} successfully.")
+                return True
+            except Exception as e:
+                logger.error(f"Failed to initialize cv2.VideoCapture for source {source}: {e}", exc_info=True)
+                st.error(f"Failed to open video source: {source}")
+                return False
 
-        if cap:
-            cap.release()
-        logger.info("cv2 capture loop stopped.")
+    def _read_frame(self):
+        """Read a single frame from the initialized video source."""
+        if IS_PICAMERA_AVAILABLE and isinstance(self.video_source, Picamera2):
+            return True, self.video_source.capture_array()
+        
+        if isinstance(self.video_source, cv2.VideoCapture):
+            return self.video_source.read()
 
-    def _processing_loop(self, source, line_x, frame_skip, iou_thresh, conf_thresh, location, model_input_size):
+        return False, None
+
+    def _processing_loop(self, source, frame_skip, conf_thresh, location, model_input_size):
         """
         Main processing loop that runs in a separate thread.
-        
-        Args:
-            source: Video source
-            line_x: X coordinate of counting line
-            frame_skip: Frame skip interval
-            iou_thresh: IoU threshold for tracking
-            conf_thresh: Confidence threshold for detection
-            location: Location name
-            model_input_size: The input size for the model
+        Handles video capture, frame processing, and visualization.
         """
-        self.capture_thread = threading.Thread(target=self._capture_loop, args=(source,), daemon=True)
-        self.capture_thread.start()
-        
+        if not self._initialize_video_source(source):
+            self.is_running = False
+            return # Exit if source fails to initialize
+
         frame_idx = 0
-        
-        # FPS calculation variables
         fps_start_time = time.time()
         fps_frame_count = 0
-        
-        while self.is_running:
-            try:
-                frame = self.frame_queue.get(timeout=2.0) # Increased timeout for robustness
-                
-                frame_idx += 1
-                if frame_idx % frame_skip != 0:
-                    continue
-                    
-                timestamp_obj = datetime.now(WarehouseConfig.TIMEZONE)
-                
-                results = self.model(frame, imgsz=model_input_size, verbose=False)[0]
-                boxes = results.boxes.xyxy.cpu().numpy()
-                class_ids = results.boxes.cls.cpu().numpy()
-                confidences = results.boxes.conf.cpu().numpy()
-                
-                detections = [
-                    (tuple(box.astype(int)), int(class_id))
-                    for box, class_id, conf in zip(boxes, class_ids, confidences)
-                    if conf >= conf_thresh and int(class_id) in WarehouseConfig.VALID_CLASSES
-                ]
-                
-                self.tracker.update_tracks(detections, frame, line_x, iou_thresh, timestamp_obj, location)
-                
-                self._draw_visualization(frame, line_x)
-                
-                self.latest_frame = frame.copy()
 
-                # Update FPS counter
+        while self.is_running:
+            ret, frame = self._read_frame()
+
+            if not ret:
+                logger.warning("Failed to read frame or stream ended. Stopping processing.")
+                break # Exit the loop if frame reading fails
+
+            frame_idx += 1
+            
+            # Only process frame if the skip interval is met
+            if frame_idx % frame_skip == 0:
+                # FPS calculation
                 fps_frame_count += 1
                 if time.time() - fps_start_time >= 1.0:
                     self.processing_fps = fps_frame_count / (time.time() - fps_start_time)
                     fps_frame_count = 0
                     fps_start_time = time.time()
                 
-            except queue.Empty:
-                logger.warning("Processing queue is empty. Capture thread may have stopped.")
-                continue
-            except Exception as e:
-                logger.error(f"An exception occurred in the processing loop: {e}", exc_info=True)
-        
-        self.processing_fps = 0
-        logger.info("Processing stopped.")
+                timestamp_obj = datetime.now(WarehouseConfig.TIMEZONE)
+                
+                # Run YOLO inference
+                results = self.model(frame, imgsz=model_input_size, verbose=False)[0]
+                boxes = results.boxes.xyxy.cpu().numpy()
+                class_ids = results.boxes.cls.cpu().numpy()
+                confidences = results.boxes.conf.cpu().numpy()
+                
+                # Filter detections and format for tracker
+                detections = [
+                    (tuple(box.astype(int)), int(class_id), conf)
+                    for box, class_id, conf in zip(boxes, class_ids, confidences)
+                    if conf >= conf_thresh and int(class_id) in WarehouseConfig.VALID_CLASSES
+                ]
+                
+                # Update tracker with new detections
+                self.tracker.update_tracks(detections, frame, timestamp_obj, location)
+            
+            # Always draw visualization on the frame to prevent flickering
+            self._draw_visualization(frame)
+            
+            # Store latest frame for display in Streamlit
+            self.latest_frame = frame.copy()
 
-    def _draw_visualization(self, frame, line_x):
+            # Avoid busy-waiting on skipped frames
+            if frame_idx % frame_skip != 0:
+                 time.sleep(0.01)
+            
+        self.is_running = False
+        logger.info("Processing loop finished.")
+
+    def _draw_visualization(self, frame):
         """
-        Draw bounding boxes, track IDs, and statistics on frame.
+        Draw bounding boxes, track IDs, and the counting zone on the frame.
         
         Args:
             frame: OpenCV frame to draw on
-            line_x: X coordinate of counting line
         """
-        # Draw the counting line
-        height, _, _ = frame.shape
-        cv2.line(frame, (line_x, 0), (line_x, height), (0, 0, 255), 2)  # Red line, thickness 2
+        # Draw the counting zone
+        frame_h, frame_w, _ = frame.shape
+        zone_x1 = int(frame_w * WarehouseConfig.COUNTING_ZONE_X_START_RATIO)
+        zone_x2 = int(frame_w * WarehouseConfig.COUNTING_ZONE_X_END_RATIO)
+        zone_y1 = int(frame_h * WarehouseConfig.COUNTING_ZONE_Y_START_RATIO)
+        zone_y2 = int(frame_h * WarehouseConfig.COUNTING_ZONE_Y_END_RATIO)
+        
+        # Draw the zone with a semi-transparent overlay
+        overlay = frame.copy()
+        cv2.rectangle(overlay, (zone_x1, zone_y1), (zone_x2, zone_y2), (255, 100, 0), -1) # Blue, filled
+        alpha = 0.2
+        cv2.addWeighted(overlay, alpha, frame, 1 - alpha, 0, frame)
+        
+        # Draw the zone border
+        cv2.rectangle(frame, (zone_x1, zone_y1), (zone_x2, zone_y2), (255, 150, 50), 2) # Brighter blue border
 
-        # Draw bounding boxes and track IDs
-        for track_id, track_data in self.tracker.tracks.items():
-            x1, y1, x2, y2 = track_data['bbox']
-            color = (0, 255, 0)  # Green color for bounding boxes
+        for track_id, track in self.tracker.tracks.items():
+            x1, y1, x2, y2 = track.bbox
             
-            # Draw bounding box
+            # Determine color based on track state
+            if track.state == 'CONFIRMED':
+                color = (0, 255, 0)      # Green
+            elif track.state == 'COASTING':
+                color = (255, 165, 0)    # Orange
+            elif track.state == 'TENTATIVE':
+                color = (0, 255, 255)    # Yellow
+            else: # COUNTED or other states
+                color = (255, 0, 0)      # Blue
+
             cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
             
-            # Draw track ID
-            cv2.putText(frame, f"ID:{track_id}", (x1, y1 - 10), 
-                       cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
+            # Add track ID and state text
+            label = f"ID:{track_id} [{track.state}]"
+            cv2.putText(frame, label, (x1, y1 - 10), 
+                       cv2.FONT_HERSHEY_SIMPLEX, 0.7, color, 2)
         
-        # Draw statistics
+        # Display counts
         counts_text = f"Loaded: {self.tracker.counts['in']} | Unloaded: {self.tracker.counts['out']}"
         cv2.putText(frame, counts_text, (10, 30), 
-                   cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
+                   cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2, cv2.LINE_AA)
+        
+        # Display processing FPS
+        fps_text = f"FPS: {self.processing_fps:.1f}"
+        cv2.putText(frame, fps_text, (frame.shape[1] - 150, 30), 
+                   cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2, cv2.LINE_AA)
 
     def _create_session_summary(self, events, counts):
         """
         Create session summary from events and counts.
         
         Args:
-            events: List of tracking events (timestamp, status, track_id, location, product_type)
-            counts: Dictionary of in/out counts (overall)
+            events: List of tracking events
+            counts: Dictionary of in/out counts
             
         Returns:
             Dict: Formatted session summary
@@ -331,58 +301,44 @@ class VideoProcessor:
         detailed_product_counts = {"loaded": {}, "unloaded": {}}
         if events:
             for event_data in events:
-                # event_data = (timestamp, status, track_id, location, product_type)
-                status = event_data[1]      # 'loaded' or 'unloaded'
-                product_type = event_data[4] # e.g., 'neshaste', 'sulfat'
-                
+                status = event_data[1]
+                product_type = event_data[4]
                 if status in detailed_product_counts:
                     detailed_product_counts[status][product_type] = detailed_product_counts[status].get(product_type, 0) + 1
         
-        # Handle case with no events
         if not events and loaded_count == 0 and unloaded_count == 0:
-            return {
-                "total_products": 0,
-                "operation_type": "none",
-                "start_time": "N/A",
-                "end_time": "N/A",
-                "location": "Unknown",
-                "detailed_product_counts": detailed_product_counts, # empty at this point
-                "events": {}
-            }
-        
-        # Extract session info from events
-        start_time = events[0][0] if events else "N/A" # Handle if somehow counts exist but events don't
+            operation_type = "none"
+        elif loaded_count > 0 and unloaded_count == 0:
+            operation_type = "loading"
+        elif unloaded_count > 0 and loaded_count == 0:
+            operation_type = "unloading"
+        else:
+            operation_type = "mixed"
+            
+        start_time = events[0][0] if events else "N/A"
         end_time = events[-1][0] if events else "N/A"
         location = events[0][3] if events else "Unknown"
+
+        total_products = loaded_count + unloaded_count
         
-        # Determine operation type and total products (overall)
-        total_products = max(loaded_count, unloaded_count)
-        if loaded_count > unloaded_count:
-            operation_type = "loaded"
-        elif unloaded_count > loaded_count:
-            operation_type = "unloaded"
-        else:
-            # if loaded_count > 0 (and equals unloaded_count), it's balanced activity
-            operation_type = "balanced" if loaded_count > 0 else "none" 
-        
-        # Format events for output
-        formatted_events = {
-            str(i): {
+        # Create a serializable dictionary of events, using index as key
+        events_dict = {
+            idx: {
                 "timestamp": event[0],
                 "status": event[1],
                 "track_id": event[2],
                 "location": event[3],
                 "product_type": event[4]
             }
-            for i, event in enumerate(events)
+            for idx, event in enumerate(events)
         }
         
         return {
-            "total_products": total_products, # Overall total
-            "operation_type": operation_type, # Overall operation type
+            "total_products": total_products,
+            "operation_type": operation_type,
             "start_time": start_time,
             "end_time": end_time,
             "location": location,
-            "detailed_product_counts": detailed_product_counts, # New detailed counts
-            "events": formatted_events
+            "detailed_product_counts": detailed_product_counts,
+            "events": events_dict
         }

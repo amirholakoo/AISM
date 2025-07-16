@@ -80,13 +80,10 @@ class StreamlitUI:
         """Render the sidebar with configuration options."""
         with st.sidebar:
             st.header("⚙️ Configuration")
-            self.line_x = st.number_input(
-                "Counting Line (X-coordinate)", 
-                min_value=0, 
-                max_value=1920, # Assuming max video width
-                value=WarehouseConfig.LINE_X_DEFAULT, 
-                step=10,
-                help="Set the vertical line for counting. Objects crossing this line will be logged."
+            
+            st.info(
+                "The counting logic now uses a central region instead of a single line. "
+                "The zone is configured in `config/warehouse_config.py`."
             )
 
             st.markdown("---")
@@ -158,9 +155,7 @@ class StreamlitUI:
             self.vp.start_processing(
                 source, 
                 self.weights, 
-                self.line_x, 
                 st.session_state.skip, 
-                self.iou, 
                 self.conf, 
                 self.location,
                 st.session_state.model_input_size
