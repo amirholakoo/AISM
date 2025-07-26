@@ -10,6 +10,7 @@ from datetime import datetime
 from typing import Dict
 import logging
 import torch
+from queue import Queue, Empty, Full
 
 import cv2
 import streamlit as st
@@ -45,9 +46,14 @@ class VideoProcessor:
         self.tracker = ProductTracker()
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
         self.processing_thread = None
+        self.grabber_thread = None # Thread for grabbing frames
+        # Use a large queue to buffer frames, ensuring none are dropped.
+        # The grabber will wait if this queue is full.
+        self.frame_queue = Queue(maxsize=120)
         self.processing_fps = 0
         self.video_source = None # Will be cv2.VideoCapture or Picamera2 instance
         logger.info(f"Using device: {self.device}")
+        logger.info(f"VideoProcessor initialized. IS_PICAMERA_AVAILABLE: {IS_PICAMERA_AVAILABLE}")
 
     def initialize_model(self, weights_path):
         """
@@ -80,20 +86,37 @@ class VideoProcessor:
             conf_thresh: Confidence threshold for detection
             location: Location name for this processing session
             model_input_size: The input size for the model (e.g., 640, 1280)
+            
+        Returns:
+            bool: True if processing started successfully, False otherwise.
         """
         if not self.initialize_model(weights_path):
-            return
+            return False
             
         self.tracker.reset()
-        self.is_running = True
         
+        # Initialize the video source. If it fails, stop here.
+        if not self._initialize_video_source(source):
+            self.is_running = False
+            return False
+
+        self.is_running = True
+
+        # Start the frame grabber thread
+        self.grabber_thread = threading.Thread(
+            target=self._frame_grabber_loop,
+            daemon=True
+        )
+        self.grabber_thread.start()
+
         # Start processing in daemon thread
         self.processing_thread = threading.Thread(
             target=self._processing_loop,
-            args=(source, frame_skip, conf_thresh, location, model_input_size),
+            args=(frame_skip, conf_thresh, location, model_input_size),
             daemon=True
         )
         self.processing_thread.start()
+        return True
 
     def stop_processing(self):
         """
@@ -104,7 +127,9 @@ class VideoProcessor:
         """
         self.is_running = False
         
-        # Wait for the processing thread to finish
+        # Wait for the processing and grabber threads to finish
+        if self.grabber_thread and self.grabber_thread.is_alive():
+            self.grabber_thread.join()
         if self.processing_thread and self.processing_thread.is_alive():
             self.processing_thread.join()
             
@@ -116,13 +141,21 @@ class VideoProcessor:
             elif isinstance(self.video_source, cv2.VideoCapture):
                 self.video_source.release()
             self.video_source = None
-            
+        
+        # Empty the queue
+        while not self.frame_queue.empty():
+            try:
+                self.frame_queue.get_nowait()
+            except Empty:
+                break
+
         events = list(self.tracker.events)
         counts = dict(self.tracker.counts)
         return self._create_session_summary(events, counts)
 
     def _initialize_video_source(self, source):
         """Initialize the correct video source based on input."""
+        logger.info(f"Attempting to initialize video source: {source}")
         if source == "picamera" and IS_PICAMERA_AVAILABLE:
             try:
                 logger.info("Initializing Raspberry Pi camera.")
@@ -144,15 +177,53 @@ class VideoProcessor:
              return False
         else:
             try:
+                # Set environment variables for OpenCV to improve RTSP stream handling.
+                # Use TCP transport for reliability and increase probe size for better stream analysis.
+                import os
+                os.environ["OPENCV_FFMPEG_CAPTURE_OPTIONS"] = "rtsp_transport;tcp"
+                
                 logger.info(f"Initializing cv2.VideoCapture for source: {source}")
-                self.video_source = cv2.VideoCapture(source)
-                if not self.video_source.isOpened():
-                    logger.warning(f"Failed to open source with cv2.VideoCapture: {source}")
-                    st.error(f"Cannot open video source: {source}")
-                    self.video_source.release()
-                    self.video_source = None
+
+                # Retry logic to handle intermittent connection issues where the stream may not be ready immediately.
+                self.video_source = None
+                max_retries = 8  # Increased retries for network stream stability
+                retry_delay = 2  # seconds
+                for attempt in range(max_retries):
+                    logger.info(f"Connection attempt {attempt + 1}/{max_retries} to {source}")
+                    cap = cv2.VideoCapture(source, cv2.CAP_FFMPEG)
+                    
+                    if cap and cap.isOpened():
+                        # The stream is open, now verify we can actually read from it.
+                        logger.info(f"Attempt {attempt + 1}: Source connected. Verifying stream by grabbing a frame...")
+                        grab_success = cap.grab()  # Try to grab one frame
+                        if grab_success:
+                            logger.info(f"Attempt {attempt + 1}: Test frame grabbed successfully. Stream is live.")
+                            self.video_source = cap
+                            break  # Success! Exit the loop.
+                        else:
+                            logger.warning(f"Attempt {attempt + 1}: Connected but failed to grab frame. Stream may not be ready.")
+                            cap.release()  # Release the faulty connection
+                    else:
+                        logger.warning(f"Attempt {attempt + 1}: Failed to open source.")
+                        if cap:
+                            cap.release()
+
+                    logger.info(f"Retrying in {retry_delay} seconds...")
+                    time.sleep(retry_delay)
+                
+                if not self.video_source:
+                    logger.error(f"Failed to open video source after {max_retries} attempts: {source}")
+                    st.error(f"Cannot open video source: {source}. Please check URL and ensure stream is active.")
                     return False
+
+                # Set a small buffer size. This can help stabilize some RTSP streams
+                # by ensuring there's always a frame ready, preventing timeouts.
+                self.video_source.set(cv2.CAP_PROP_BUFFERSIZE, 3)
+                    
                 logger.info(f"cv2.VideoCapture opened source: {source} successfully.")
+                logger.info("===================================================")
+                logger.info("   ✅ SYSTEM READY: Forklift can now proceed.   ")
+                logger.info("===================================================")
                 return True
             except Exception as e:
                 logger.error(f"Failed to initialize cv2.VideoCapture for source {source}: {e}", exc_info=True)
@@ -165,29 +236,67 @@ class VideoProcessor:
             return True, self.video_source.capture_array()
         
         if isinstance(self.video_source, cv2.VideoCapture):
-            return self.video_source.read()
+            # For some backends, especially with RTSP, grabbing the frame first 
+            # and then retrieving it can be more stable than a single read() call.
+            ret = self.video_source.grab()
+            if not ret:
+                return False, None
+            return self.video_source.retrieve()
 
         return False, None
 
-    def _processing_loop(self, source, frame_skip, conf_thresh, location, model_input_size):
+    def _frame_grabber_loop(self):
+        """
+        Dedicated loop for grabbing frames from the source. It uses a blocking
+        'put' to ensure that every frame is queued for processing without being
+        dropped, waiting if the processing thread falls behind.
+        """
+        logger.info("Frame grabber loop started.")
+        frames_grabbed = 0
+        while self.is_running:
+            ret, frame = self._read_frame()
+            if not ret:
+                logger.warning(f"Failed to grab frame after {frames_grabbed} frames. Stopping grabber.")
+                # Place a sentinel value to signal the end to the processor
+                try:
+                    self.frame_queue.put(None, timeout=0.5)
+                except Full:
+                    logger.warning("Frame queue was full when trying to add sentinel. Processing may be stuck.")
+                break
+
+            # This is a blocking call. If the queue is full, this thread will
+            # wait until a slot is available. This is the key to preventing
+            # frame drops and ensuring every frame is processed.
+            try:
+                self.frame_queue.put((frame, datetime.now(WarehouseConfig.TIMEZONE)), timeout=1.0)
+                frames_grabbed += 1
+            except Full:
+                logger.warning("Frame queue is full. Frame grabber is blocked, indicating processing is too slow.")
+                # If the queue is full, we wait. If we need to stop, is_running will be false.
+                continue
+
+        logger.info(f"Frame grabber loop finished after grabbing {frames_grabbed} frames.")
+
+
+    def _processing_loop(self, frame_skip, conf_thresh, location, model_input_size):
         """
         Main processing loop that runs in a separate thread.
         Handles video capture, frame processing, and visualization.
         """
-        if not self._initialize_video_source(source):
-            self.is_running = False
-            return # Exit if source fails to initialize
-
         frame_idx = 0
         fps_start_time = time.time()
         fps_frame_count = 0
 
         while self.is_running:
-            ret, frame = self._read_frame()
-
-            if not ret:
-                logger.warning("Failed to read frame or stream ended. Stopping processing.")
-                break # Exit the loop if frame reading fails
+            try:
+                # Get a frame from the queue, waiting up to 1 second
+                item = self.frame_queue.get(timeout=1.0)
+                if item is None: # Sentinel value means grabber stopped
+                    break
+                frame, timestamp_obj = item
+            except Empty:
+                logger.warning("Frame queue was empty for 1 second. Assuming stream ended.")
+                break # Exit if the queue is empty for too long
 
             frame_idx += 1
             
@@ -199,8 +308,6 @@ class VideoProcessor:
                     self.processing_fps = fps_frame_count / (time.time() - fps_start_time)
                     fps_frame_count = 0
                     fps_start_time = time.time()
-                
-                timestamp_obj = datetime.now(WarehouseConfig.TIMEZONE)
                 
                 # Run YOLO inference
                 results = self.model(frame, imgsz=model_input_size, verbose=False)[0]
@@ -218,7 +325,8 @@ class VideoProcessor:
                 # Update tracker with new detections
                 self.tracker.update_tracks(detections, frame, timestamp_obj, location)
             
-            # Always draw visualization on the frame to prevent flickering
+            # Always draw visualization on the frame that was just processed.
+            # This ensures the UI is perfectly synchronized with the tracker's state.
             self._draw_visualization(frame)
             
             # Store latest frame for display in Streamlit

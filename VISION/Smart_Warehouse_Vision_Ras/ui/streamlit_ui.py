@@ -37,10 +37,8 @@ class StreamlitUI:
             st.session_state.json_ready = False
         if 'manual_edit_mode' not in st.session_state:
             st.session_state.manual_edit_mode = False
-        if 'model_input_size' not in st.session_state:
-            st.session_state.model_input_size = WarehouseConfig.MODEL_INPUT_SIZE_DEFAULT
-        if 'skip' not in st.session_state:
-            st.session_state.skip = WarehouseConfig.FRAME_SKIP_DEFAULT
+        if 'system_ready' not in st.session_state:
+            st.session_state.system_ready = False
             
         self.vp: VideoProcessor = st.session_state.vp
         
@@ -49,6 +47,8 @@ class StreamlitUI:
         self.weights = WarehouseConfig.WEIGHTS_DEFAULT
         self.iou = WarehouseConfig.IOU_THRESH_DEFAULT
         self.conf = WarehouseConfig.CONF_THRESH_DEFAULT
+        self.model_input_size = WarehouseConfig.MODEL_INPUT_SIZE_DEFAULT
+        self.skip = WarehouseConfig.FRAME_SKIP_DEFAULT
 
     def render(self):
         """Render the complete Streamlit application."""
@@ -67,14 +67,7 @@ class StreamlitUI:
         elif st.session_state.summary_data:
             self._render_confirmation_interface(st.session_state.summary_data)
         else:
-            # Show tabs only when not running and no summary is displayed
-            prod_tab, demo_tab = st.tabs(["Production (Live)", "Demo (File)"])
-
-            with prod_tab:
-                self._render_processing_interface(is_demo=False)
-
-            with demo_tab:
-                self._render_processing_interface(is_demo=True)
+            self._render_processing_interface()
 
     def _render_sidebar(self):
         """Render the sidebar with configuration options."""
@@ -87,88 +80,67 @@ class StreamlitUI:
             )
 
             st.markdown("---")
-            st.subheader("Performance Tuning")
-
-            # Create a mapping from integer value back to the display name for the default index
-            resolution_display_names = list(WarehouseConfig.RESOLUTION_OPTIONS.keys())
-            resolution_values = list(WarehouseConfig.RESOLUTION_OPTIONS.values())
-            try:
-                default_index = resolution_values.index(st.session_state.model_input_size)
-            except ValueError:
-                default_index = 0 # Fallback to the first option
-
-            selected_resolution_display = st.selectbox(
-                "Model Resolution",
-                options=resolution_display_names,
-                index=default_index,
-                help="Higher resolutions are more accurate but slower. Lower resolutions are faster but may miss small objects."
-            )
-            st.session_state.model_input_size = WarehouseConfig.RESOLUTION_OPTIONS[selected_resolution_display]
-
-            st.session_state.skip = st.slider(
-                "Frame Skip",
-                min_value=1,
-                max_value=30,
-                value=st.session_state.skip,
-                step=1,
-                help="Higher values increase performance by processing fewer frames per second."
+            st.info(
+                "Performance settings (resolution and frame skip) are now configured directly in the `config/warehouse_config.py` file."
             )
 
-    def _render_processing_interface(self, is_demo: bool):
+    def _render_processing_interface(self):
         """
-        Render the main processing interface for either live or demo mode.
-        
-        Args:
-            is_demo: True if rendering for the demo tab, False for production.
+        Render the main processing interface for live mode.
         """
-        if is_demo:
-            source = "output_filtered_3.mp4"
-            st.info(f"**Demo Mode:** Processing the local file `{source}`.")
-        else:
-            use_pi_camera = st.checkbox("Use Raspberry Pi Camera", value=True, help="If checked, the application will attempt to use the default camera connected to this Raspberry Pi.")
-            
-            if use_pi_camera:
-                source = "picamera" # Special identifier for the video processor
-            else:
-                source = st.text_input(
-                    "Video Source (URL or File Path)",
-                    "http://192.168.144.170:5000/video_feed",
-                    key="stream_url",
-                    help="Enter a network stream URL (RTSP/HTTP) or a path to a local video file."
-                )
+        source = st.text_input(
+            "Video Source (URL or File Path)",
+            "http://192.168.144.170:5000/video_feed",
+            key="stream_url",
+            help="Enter a network stream URL (RTSP/HTTP) or a path to a local video file."
+        )
 
         # The "Start" button is the only control needed here now
         if st.button(
             "▶️ Start Processing", 
             disabled=st.session_state.running, 
-            key=f"start_{'demo' if is_demo else 'prod'}"
+            key="start_prod"
         ):
             st.session_state.running = True
             st.session_state.json_ready = False
             st.session_state.summary_data = None
             st.session_state.manual_edit_mode = False
+            st.session_state.system_ready = False  # Reset on start
             
             # Create a new VideoProcessor instance each time to ensure a clean state
             self.vp = VideoProcessor()
             st.session_state.vp = self.vp
 
-            self.vp.start_processing(
-                source, 
-                self.weights, 
-                st.session_state.skip, 
-                self.conf, 
-                self.location,
-                st.session_state.model_input_size
-            )
+            # Use a placeholder for connection status
+            with st.spinner("⏳ Connecting to video source..."):
+                if self.vp.start_processing(
+                    source, 
+                    self.weights, 
+                    self.skip, 
+                    self.conf, 
+                    self.location,
+                    self.model_input_size
+                ):
+                    st.session_state.system_ready = True
+                else:
+                    # If start_processing fails, stop the running state
+                    st.session_state.running = False
+                    st.error("🔴 Failed to start video processing. Please check the source and logs.")
+
             st.rerun()
 
     def _render_live_display(self):
         """Render live video display with real-time statistics and event table."""
+        # Show "System Ready" message once connected
+        if st.session_state.get('system_ready', False):
+            st.success("✅ SYSTEM READY: Forklift can now proceed.")
+
         # Stop button at the top of the live view
         if st.button("⏹️ Stop Processing", key="stop_live"):
             summary = self.vp.stop_processing()
             st.session_state.summary_data = summary
             st.session_state.running = False
+            st.session_state.system_ready = False # Reset on stop
             st.rerun()
 
         # Improved layout with columns

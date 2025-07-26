@@ -261,36 +261,50 @@ class ProductTracker:
         current_center = track.center
         is_currently_inside = self._is_inside_zone(current_center, counting_zone)
 
-        # Scenario 1: Track enters the counting zone for the first time
-        if is_currently_inside and track.zone_entry_position is None:
-            track.zone_entry_position = current_center
-            logger.debug(f"Track {track.id} entered counting zone at {current_center}.")
+        # Scenario 1: Track enters the counting zone for the first time or re-enters
+        if is_currently_inside:
+            if track.zone_entry_position is None:
+                logger.debug(f"Track {track.id} entered counting zone at {current_center}.")
+                track.zone_entry_position = current_center
+            
+            # If a track that was counted re-enters the zone, reset its count status.
+            # This allows it to be counted again if it exits in the opposite direction.
+            if track.state == 'COUNTED':
+                logger.info(f"Track {track.id} has re-entered the zone. Resetting count status.")
+                track.state = 'CONFIRMED'
+                track.counted_direction = None
+                track.counted_timestamp = None
 
         # Scenario 2: Track was inside and has now exited the zone
         elif not is_currently_inside and track.zone_entry_position is not None:
+            
+            # First, check for a post-count cooldown.
+            # Has enough time passed since this specific track was last counted?
+            if track.counted_timestamp and (ts_obj - track.counted_timestamp) < timedelta(seconds=WarehouseConfig.COUNTING_COOLDOWN_SECONDS):
+                # It's too soon to count this track again. We simply ignore this exit event.
+                return
+
             entry_x, _ = track.zone_entry_position
             exit_x, _ = current_center
             
-            # Basic check to prevent counting if object just wiggles out and back in
+            # Check for minimal travel distance to prevent counting minor wiggles
             if abs(exit_x - entry_x) < (frame_w * 0.05): # Less than 5% width travel
                 logger.debug(f"Track {track.id} exited zone but moved too little to count. Resetting entry point.")
-                track.zone_entry_position = None # Reset to allow re-entry
+                track.zone_entry_position = None # Reset to allow re-entry without counting
                 return
 
-            # Determine direction based on entry and exit points relative to zone center
-            direction = None
-            if exit_x > entry_x: # Moved left to right
-                direction = 'out'
-            else: # Moved right to left
-                direction = 'in'
+            # Determine direction based on entry and exit points
+            direction = 'out' if exit_x > entry_x else 'in'
 
             # Get product name and status
             product_name = WarehouseConfig.PALLETE_CLASS_MAP.get(track.class_id, "Unknown")
             event_status = "unloaded" if direction == 'out' else "loaded"
             
-            # Register the event and reset the tracking state for this zone
+            # Register the event. This will set the track's counted_timestamp.
             self._register_event(track, direction, event_status, ts_obj, loc, product_name, frame)
-            track.zone_entry_position = None # Reset after counting
+            
+            # Reset the track's entry position AFTER a successful count.
+            track.zone_entry_position = None
 
     def _save_snapshot(self, frame, bbox, timestamp_obj, status, track_id, product_name):
         """Saves a snapshot of the frame when an event occurs."""
@@ -310,6 +324,8 @@ class ProductTracker:
 
             cv2.imwrite(filepath, frame_copy)
             logger.info(f"Saved snapshot: {filepath}")
+            # Add a special log entry for the event log file
+            logger.info(f"[EVENT] SNAPSHOT_SAVED: Path={filepath}, TrackID={track_id}")
         except Exception as e:
             logger.error(f"Failed to save snapshot: {e}", exc_info=True)
 
@@ -322,7 +338,12 @@ class ProductTracker:
         
         timestamp_str = ts_obj.strftime('%Y-%m-%d %H:%M:%S')
         self.events.append((timestamp_str, event_status, track.id, loc, product_name))
-        logger.info(f"Event: {event_status}, Track ID: {track.id}, Product: {product_name}, Location: {loc}")
+        
+        # Standard info log for the console
+        logger.info(f"Event registered: {event_status.upper()} | Product: {product_name} | Track ID: {track.id}")
+        # Special, more detailed log entry for the event log file
+        logger.info(f"[EVENT] PRODUCT_COUNTED: Status={event_status}, Product={product_name}, TrackID={track.id}, Location={loc}")
+
         self._save_snapshot(frame, track.bbox, ts_obj, event_status, track.id, product_name)
         
         # After a short period, allow the track to be counted again if it crosses back.
