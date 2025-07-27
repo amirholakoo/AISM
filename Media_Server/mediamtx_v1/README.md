@@ -35,9 +35,11 @@ Next, download and extract the latest ARM64 version of `mediamtx`.
 3.  Download and extract it using the link you copied.
     ```bash
     # Replace the URL with the latest version if needed
-    wget [https://github.com/bluenviron/mediamtx/releases/download/v1.9.0/mediamtx_v1.9.0_linux_arm64v8.tar.gz](https://github.com/bluenviron/mediamtx/releases/download/v1.9.0/mediamtx_v1.9.0_linux_arm64v8.tar.gz)
-    tar -xvzf mediamtx_v1.9.0_linux_arm64v8.tar.gz
+    wget https://github.com/bluenviron/mediamtx/releases/download/v1.12.3/mediamtx_v1.12.3_linux_arm64.tar.gz
+    tar -xvzf mediamtx_v1.12.3_linux_arm64.tar.gz
     ```
+    
+
 
 ### 3. Apply Custom Configuration 💡
 
