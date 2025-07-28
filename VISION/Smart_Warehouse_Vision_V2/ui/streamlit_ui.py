@@ -165,8 +165,9 @@ class StreamlitUI:
             # Display current statistics
             counts = self.vp.tracker.counts
             fps = self.vp.processing_fps
+            inference_ms = self.vp.inference_time_ms
             with stats_placeholder.container():
-                col1, col2 = st.columns(2)
+                col1, col2, col3 = st.columns(3)
                 with col1:
                     st.metric(
                         "Loaded/Unloaded", 
@@ -174,7 +175,9 @@ class StreamlitUI:
                         f"📍 {self.location}"
                     )
                 with col2:
-                    st.metric("Processing Speed", f"{fps:.1f} FPS")
+                    st.metric("Processing FPS", f"{fps:.1f}")
+                with col3:
+                    st.metric("Inference Time", f"{inference_ms:.1f} ms")
 
             # Display live event table
             events = self.vp.tracker.events

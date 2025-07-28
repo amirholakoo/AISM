@@ -51,6 +51,7 @@ class VideoProcessor:
         # The grabber will wait if this queue is full.
         self.frame_queue = Queue(maxsize=120)
         self.processing_fps = 0
+        self.inference_time_ms = 0
         self.video_source = None # Will be cv2.VideoCapture or Picamera2 instance
         logger.info(f"Using device: {self.device}")
         logger.info(f"VideoProcessor initialized. IS_PICAMERA_AVAILABLE: {IS_PICAMERA_AVAILABLE}")
@@ -310,10 +311,12 @@ class VideoProcessor:
                     fps_start_time = time.time()
                 
                 # Run YOLO inference
+                inference_start_time = time.time()
                 results = self.model(frame, imgsz=model_input_size, verbose=False)[0]
                 boxes = results.boxes.xyxy.cpu().numpy()
                 class_ids = results.boxes.cls.cpu().numpy()
                 confidences = results.boxes.conf.cpu().numpy()
+                self.inference_time_ms = (time.time() - inference_start_time) * 1000
                 
                 # Filter detections and format for tracker
                 detections = [
@@ -389,7 +392,10 @@ class VideoProcessor:
         
         # Display processing FPS
         fps_text = f"FPS: {self.processing_fps:.1f}"
-        cv2.putText(frame, fps_text, (frame.shape[1] - 150, 30), 
+        infer_text = f"Infer: {self.inference_time_ms:.1f}ms"
+        cv2.putText(frame, fps_text, (frame.shape[1] - 180, 30), 
+                   cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2, cv2.LINE_AA)
+        cv2.putText(frame, infer_text, (frame.shape[1] - 180, 70), 
                    cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2, cv2.LINE_AA)
 
     def _create_session_summary(self, events, counts):
