@@ -184,7 +184,7 @@ class StreamlitUI:
             if events:
                 df = pd.DataFrame(
                     events, 
-                    columns=['Timestamp', 'Status', 'Track ID', 'Location', 'Product Type']
+                    columns=['Timestamp', 'Status', 'Track ID', 'Location', 'Product Type', 'Snapshot']
                 )
                 df = df.sort_values(by='Timestamp', ascending=False).reset_index(drop=True)
                 events_placeholder.dataframe(df, use_container_width=True)
@@ -216,14 +216,17 @@ class StreamlitUI:
         }
         
         # Generate filename with timestamp
+        log_dir = "logs"
+        os.makedirs(log_dir, exist_ok=True)
         filename = f"events_{datetime.now(WarehouseConfig.TIMEZONE).strftime('%Y%m%d_%H%M%S')}.json"
+        filepath = os.path.join(log_dir, filename)
         json_data = json.dumps(payload, indent=4)
 
         # Save to file
         try:
-            with open(filename, "w") as f:
+            with open(filepath, "w") as f:
                 f.write(json_data)
-            st.success(f"✅ Summary saved successfully to {filename}!")
+            st.success(f"✅ Summary saved successfully to {filepath}!")
         except Exception as e:
             st.error(f"⚠️ Failed to save file: {e}")
 
@@ -248,7 +251,8 @@ class StreamlitUI:
                 event_data['status'], 
                 event_data['track_id'],
                 event_data['location'],
-                event_data['product_type']
+                event_data['product_type'],
+                event_data.get('snapshot') # Safely get snapshot
             ))
         
         # Recalculate detailed product counts from edited events
@@ -286,7 +290,8 @@ class StreamlitUI:
                 "status": event[1],
                 "track_id": event[2],
                 "location": event[3],
-                "product_type": event[4]
+                "product_type": event[4],
+                "snapshot": event[5]
             }
             for i, event in enumerate(updated_events)
         }
@@ -306,15 +311,23 @@ class StreamlitUI:
         payload = updated_summary.copy()
         payload["manual_edit"] = True  # Only difference - flag for manual edit
         
+        # Add snapshot to the payload's events
+        for event_id, event_data in payload["events"].items():
+            original_event = original_summary["events"].get(event_id, {})
+            event_data["snapshot"] = original_event.get("snapshot")
+
         # Generate filename with timestamp
+        log_dir = "logs"
+        os.makedirs(log_dir, exist_ok=True)
         filename = f"events_manual_{datetime.now(WarehouseConfig.TIMEZONE).strftime('%Y%m%d_%H%M%S')}.json"
+        filepath = os.path.join(log_dir, filename)
         json_data = json.dumps(payload, indent=4, ensure_ascii=False)
 
         # Save to file
         try:
-            with open(filename, "w", encoding='utf-8') as f:
+            with open(filepath, "w", encoding='utf-8') as f:
                 f.write(json_data)
-            st.success(f"✅ Manual edit saved successfully to {filename}!")
+            st.success(f"✅ Manual edit saved successfully to {filepath}!")
         except Exception as e:
             st.error(f"⚠️ Failed to save file: {e}")
 
@@ -404,7 +417,8 @@ class StreamlitUI:
                         'status': event_data['status'],
                         'track_id': event_data['track_id'],
                         'location': event_data['location'],
-                        'product_type': selected_product
+                        'product_type': selected_product,
+                        'snapshot': event_data.get('snapshot') # Preserve snapshot filename
                     }
                 
                 st.markdown("---")

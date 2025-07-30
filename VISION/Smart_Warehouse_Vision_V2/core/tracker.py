@@ -143,8 +143,8 @@ class ProductTracker:
         self.tracks: Dict[int, Track] = {}
         self.next_id: int = 0
         self.counts: Dict[str, int] = {'in': 0, 'out': 0}
-        # Updated event structure: (timestamp, status, track_id, location, product_type)
-        self.events: List[Tuple[str, str, int, str, str]] = [] 
+        # Updated event structure: (timestamp, status, track_id, location, product_type, snapshot_filename)
+        self.events: List[Tuple[str, str, int, str, str, str]] = [] 
         self.session_start_time: str = datetime.now(WarehouseConfig.TIMEZONE).strftime('%Y-%m-%d %H:%M:%S')
         # Cooldown is now global per event type ('loaded', 'unloaded')
         self.last_event_time: Dict[str, datetime] = {}
@@ -307,7 +307,12 @@ class ProductTracker:
             track.zone_entry_position = None
 
     def _save_snapshot(self, frame, bbox, timestamp_obj, status, track_id, product_name):
-        """Saves a snapshot of the frame when an event occurs."""
+        """
+        Saves a snapshot of the frame when an event occurs.
+        
+        Returns:
+            str: The filename of the saved snapshot, or None on failure.
+        """
         try:
             # Sanitize timestamp for filename
             timestamp_str = timestamp_obj.strftime('%Y-%m-%d_%H-%M-%S')
@@ -326,8 +331,10 @@ class ProductTracker:
             logger.info(f"Saved snapshot: {filepath}")
             # Add a special log entry for the event log file
             logger.info(f"[EVENT] SNAPSHOT_SAVED: Path={filepath}, TrackID={track_id}")
+            return filename
         except Exception as e:
             logger.error(f"Failed to save snapshot: {e}", exc_info=True)
+            return None
 
     def _register_event(self, track: Track, direction: str, event_status: str, ts_obj, loc, product_name, frame):
         """Handles the logic for registering a counting event."""
@@ -336,15 +343,17 @@ class ProductTracker:
         track.counted_timestamp = ts_obj
         self.counts[direction] += 1
         
+        # Save snapshot and get the filename
+        snapshot_filename = self._save_snapshot(frame, track.bbox, ts_obj, event_status, track.id, product_name)
+        
         timestamp_str = ts_obj.strftime('%Y-%m-%d %H:%M:%S')
-        self.events.append((timestamp_str, event_status, track.id, loc, product_name))
+        self.events.append((timestamp_str, event_status, track.id, loc, product_name, snapshot_filename))
         
         # Standard info log for the console
         logger.info(f"Event registered: {event_status.upper()} | Product: {product_name} | Track ID: {track.id}")
         # Special, more detailed log entry for the event log file
         logger.info(f"[EVENT] PRODUCT_COUNTED: Status={event_status}, Product={product_name}, TrackID={track.id}, Location={loc}")
 
-        self._save_snapshot(frame, track.bbox, ts_obj, event_status, track.id, product_name)
         
         # After a short period, allow the track to be counted again if it crosses back.
         # This is managed by the cooldown check in _check_line_crossing.

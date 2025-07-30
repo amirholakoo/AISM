@@ -442,7 +442,8 @@ class VideoProcessor:
                 "status": event[1],
                 "track_id": event[2],
                 "location": event[3],
-                "product_type": event[4]
+                "product_type": event[4],
+                "snapshot": event[5] if len(event) > 5 else None
             }
             for idx, event in enumerate(events)
         }
