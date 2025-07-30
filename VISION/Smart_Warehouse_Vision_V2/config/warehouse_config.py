@@ -19,7 +19,7 @@ class WarehouseConfig:
     }
     
     # Model Configuration
-    WEIGHTS_DEFAULT = 'final_yolov11n_640_100epoch.pt'  # Ensure you have this weights file
+    WEIGHTS_DEFAULT = '100_epoch_650_yolov11n_v2.pt'  # Ensure you have this weights file
     
     # --- Class and UI Configuration ---
     # Mapping from class IDs to human-readable names
