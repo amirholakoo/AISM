@@ -23,7 +23,7 @@ matplotlib>=3.5.0
 1. **Clone the Repository:**
    ```bash
    git clone https://github.com/amirholakoo/qr-detector-v1.git
-   cd qr-detection-system
+   cd qr-detector-v1
    ```
 
 2. **Create Virtual Environment:**
