@@ -2,29 +2,8 @@
 
 A high-performance QR code detection system optimized for both Raspberry Pi 5 and desktop computers. This system provides real-time QR code detection with advanced preprocessing techniques and unique code tracking.
 
-## 🚀 Features
 
-- **Real-time QR Detection:**
-  - Live video feed processing
-  - Multiple preprocessing methods for improved detection
-  - Optimized for performance
-
-- **Smart Detection:**
-  - Unique QR code tracking
-  - Duplicate detection prevention
-  - JSON output with metadata
-
-- **Multi-platform Support:**
-  - Raspberry Pi 5 optimized (with PiCamera2)
-  - Desktop/Laptop compatible
-  - Automatic platform detection
-
-- **Advanced Visualization:**
-  - Real-time detection overlay
-  - FPS monitoring
-  - Detection statistics
-
-## 📋 Requirements
+## Requirements
 ```txt
 opencv-python>=4.8.0
 numpy>=1.21.0
@@ -39,11 +18,11 @@ matplotlib>=3.5.0
   pip install picamera2
   ```
 
-## 🛠️ Installation
+## Installation
 
 1. **Clone the Repository:**
    ```bash
-   git clone https://github.com/amirholakoo/qrcode-detection-system.git
+   git clone https://github.com/amirholakoo/qr-detector-v1.git
    cd qr-detection-system
    ```
 
@@ -60,20 +39,9 @@ matplotlib>=3.5.0
    pip install -r requirements.txt
    ```
 
-
-## 🎯 Usage
-
 ### Quick Start
 ```bash
 # Auto-detect platform and run appropriate version
 python qr-live-picamera.py
 
 ```
-
-### Controls
-- **Q** - Quit application
-- **S** - Save detections to JSON
-- **C** - Clear detection log
-- **F** - Toggle fullscreen
-- **P** - Toggle preprocessing view (Desktop only)
-
