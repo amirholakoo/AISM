@@ -8,7 +8,6 @@ This project provides a robust, high-performance QR code scanning application de
 - **Robust Video Streaming:** A multi-threaded `VideoStreamer` handles RTSP streams, preventing I/O blocking and ensuring a smooth, real-time video feed.
 - **Resilient Connection Handling:** The application includes intelligent connection retries and stream verification to handle network interruptions and ensure the video stream is live before processing.
 - **Structured JSON Logging:** Each run of the application generates a unique, timestamped JSON log file containing all unique QR codes detected during the session.
-- **Timezone-Aware Timestamps:** All logs include timezone-aware timestamps for accurate record-keeping.
 - **Modular and Configurable:** The project is organized into a clean, modular structure with a central configuration file, making it easy to adapt and extend.
 
 ## Installation
