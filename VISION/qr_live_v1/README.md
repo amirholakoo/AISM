@@ -58,27 +58,4 @@ For testing and development, you can also run the application with a local video
 python robust_live_qr.py "data/test.mp4"
 ```
 
-## Project Structure
 
-The project is organized into the following directories and files:
-
-- **`robust_live_qr.py`**: The main entry point for the application.
-- **`config/`**: Contains the configuration files for the application.
-    - **`settings.py`**: The main configuration file where you can adjust parameters like timezone, output directory, and display settings.
-- **`core/`**: Contains the core logic of the application.
-    - **`video_streamer.py`**: Handles the connection to the video stream.
-    - **`qr_scanner.py`**: Manages the QR code detection and processing.
-    - **`json_manager.py`**: Manages the creation and saving of JSON log files.
-- **`output/`**: The default directory where the timestamped JSON log files are saved.
-- **`data/`**: A directory for storing test videos and images.
-- **`requirements.txt`**: A list of all the Python libraries required for the project.
-
-## Configuration
-
-All major parameters can be adjusted in the `config/settings.py` file. This includes:
-
-- **`RECONNECT_DELAY_SECONDS`**: The time to wait before attempting to reconnect to a lost video stream.
-- **`CONSOLE_LOG_TIMEOUT`**: The cooldown period before printing the same QR code to the console again.
-- **`DISPLAY_SCALE`**: A factor to scale the display window for better visibility.
-- **`OUTPUT_DIR`**: The directory where the JSON log files are saved.
-- **`TIMEZONE`**: The timezone for all timestamps in the logs (defaults to 'Asia/Tehran'). 
