@@ -39,9 +39,13 @@ matplotlib>=3.5.0
    pip install -r requirements.txt
    ```
 
+
 ### Quick Start
 ```bash
-# Auto-detect platform and run appropriate version
+# Run Raspberry Pi live detector (recommended)
+python qr-live-picamera.py
+
+# Or run the tuned version (if you have a custom tuning file configured)
 python qr-live-picamera.py
 
 ```
