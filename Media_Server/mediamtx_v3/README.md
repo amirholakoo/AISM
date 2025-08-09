@@ -18,6 +18,8 @@ First, clone this repository to your home directory.
 
 ```bash
 git clone https://github.com/amirholakoo/AISM.git
+```
+```bash
 cd AISM/Media_Server/mediamtx_v2
 ```
 *Replace `<URL_OF_YOUR_REPOSITORY>` with the actual Git URL and `your-repo-name` with the directory name.*
@@ -46,6 +48,8 @@ Now, download and extract the latest ARM64 version of `mediamtx`.
     ```bash
     # Replace the URL with the latest version if needed
     wget https://github.com/bluenviron/mediamtx/releases/download/v1.13.1/mediamtx_v1.13.1_linux_arm64.tar.gz
+    ```
+    ```bash
     tar -xvzf mediamtx_v1.13.1_linux_arm64.tar.gz
     ```
 
