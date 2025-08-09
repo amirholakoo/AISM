@@ -46,7 +46,7 @@ The application is run from the command line, with the video source provided as 
 >
 > Please follow the exact setup instructions from the following repository:
 >
-> 👉 **[Required: mediamtx_v2 Setup](https://github.com/amirholakoo/AISM/tree/main/Media_Server/mediamtx_v3)**
+> 👉 **[Required: mediamtx_v3 Setup](https://github.com/amirholakoo/AISM/tree/main/Media_Server/mediamtx_v3)**
 
 
 To connect to a live RTSP stream (e.g., from a camera connected to a MediaMTX server), use the following command:
