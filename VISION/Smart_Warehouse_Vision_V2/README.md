@@ -9,7 +9,7 @@ This version is optimized for deployment on a **Raspberry Pi** with a connected 
 ## Key Features
 
 - **Accurate Object Detection**:
-    - Utilizes a custom-trained `YOLOv11n` model (`final_yolov11n_640_100epoch.pt`) for high-speed, accurate detection of forklifts and materials.
+    - Utilizes a custom-trained `YOLOv11n` model (`100_epoch_650_yolov11n_v2.pt`) for high-speed, accurate detection of forklifts and materials.
 - **Region-Based Counting Logic**:
     - Employs a large, configurable central zone for counting, making the system more robust against accidental or repeated line crossings.
 - **Live UI Dashboard**: A user-friendly Streamlit interface displays:
@@ -32,13 +32,19 @@ This version is optimized for deployment on a **Raspberry Pi** with a connected 
 
 ### On a Standard Computer (for Development)
 
-1.  **Create a Virtual Environment**:
+1.  **Clone the Repository**:
+    ```bash
+    git clone https://github.com/amirholakoo/AISM.git
+    cd AISM/VISION/Smart_Warehouse_Vision_V2
+    ```
+
+2.  **Create a Virtual Environment**:
     ```bash
     python3 -m venv venv
     source venv/bin/activate
     ```
 
-2.  **Install Dependencies**:
+3.  **Install Dependencies**:
     ```bash
     pip install -r requirements.txt
     ```
@@ -47,28 +53,48 @@ This version is optimized for deployment on a **Raspberry Pi** with a connected 
 
 Setting up on a Raspberry Pi requires installing system-level dependencies for the camera module.
 
-1.  **Install System Dependencies**:
+1.  **Clone the Repository**:
+    ```bash
+    git clone https://github.com/amirholakoo/AISM.git
+    cd AISM/VISION/Smart_Warehouse_Vision_V2
+    ```
+
+2.  **Install System Dependencies**:
     These packages are required for `picamera2` to function correctly.
     ```bash
     sudo apt-get update
     sudo apt-get install -y build-essential libcamera-dev python3-libcamera
     ```
 
-2.  **Create the Virtual Environment (with System Access)**:
+3.  **Create the Virtual Environment (with System Access)**:
     This critical step creates a virtual environment that can access the system-level `python3-libcamera` library.
     ```bash
     python3 -m venv --system-site-packages venv
     ```
 
-3.  **Activate the Environment**:
+4.  **Activate the Environment**:
     ```bash
     source venv/bin/activate
     ```
 
-4.  **Install Python Dependencies**:
+5.  **Install Python Dependencies**:
     ```bash
     pip install -r requirements.txt
     ```
+
+### Video Source Configuration
+
+This application supports multiple video sources:
+- **Local Video File**: Provide the path to a local video file (e.g., `/path/to/video.mp4`).
+- **Picamera (Raspberry Pi)**: Use the special keyword `picamera` to use the connected camera module.
+- **RTSP/HTTP Stream**: Provide the full URL of the network stream.
+
+> **Important for RTSP/HTTP Streams:**
+> To ensure a stable video stream, you **must use the `mediamtx_v2` server**. Other versions or different streaming servers are not compatible.
+>
+> Please follow the exact setup instructions from the following repository:
+>
+> 👉 **[Required: mediamtx_v2 Setup](https://github.com/amirholakoo/AISM/tree/main/Media_Server/mediamtx_v2)**
 
 ## How to Run
 
@@ -78,7 +104,7 @@ Setting up on a Raspberry Pi requires installing system-level dependencies for t
     ```
 
 2.  **Ensure the Model is Present**:
-    Make sure the `final_yolov11n_640_100epoch.pt` file is in the root directory of the project.
+    Make sure the `100_epoch_650_yolov11n_v2.pt` file is in the root directory of the project.
 
 3.  **Start the Application**:
     ```bash

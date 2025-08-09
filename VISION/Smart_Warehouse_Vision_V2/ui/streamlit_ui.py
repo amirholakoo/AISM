@@ -90,7 +90,7 @@ class StreamlitUI:
         """
         source = st.text_input(
             "Video Source (URL or File Path)",
-            "http://192.168.144.170:5000/video_feed",
+            "picamera",
             key="stream_url",
             help="Enter a network stream URL (RTSP/HTTP) or a path to a local video file."
         )
