@@ -25,6 +25,7 @@ os.makedirs(OUTPUT_PATH, exist_ok=True)
 
 class QRLiveDetectorPi5:
     def __init__(self, width=1280, height=960, use_picamera2=True):
+
         """Initialize the live QR detector for Raspberry Pi 5"""
         self.width = width
         self.height = height
@@ -75,6 +76,17 @@ class QRLiveDetectorPi5:
             
             # Allow camera to warm up
             time.sleep(2)
+            
+            # Force manual exposure to mitigate motion blur under vibration
+            try:
+                self.picam2.set_controls({
+                    "AeEnable": False,      # disable auto exposure
+                    "ExposureTime": 4000,   # microseconds (≈ 1/250s)
+                    "AnalogueGain": 2.0    # adjust if image is too dark/bright
+                })
+                print("🔧 Manual exposure applied: 4000µs, gain 2.0")
+            except Exception as e_ctrl:
+                print(f"⚠️  Could not apply manual exposure controls: {e_ctrl}")
             
             print(f"✅ PiCamera2 initialized successfully - Resolution: {self.width}x{self.height}")
             return True
@@ -339,8 +351,9 @@ def main():
     print("🔧 Initializing QR Live Detection for Raspberry Pi 5...")
     
     # Create detector (will auto-select best camera method)
-    detector = QRLiveDetectorPi5(width=640, height=480, use_picamera2=True)
-    
+    #detector = QRLiveDetectorPi5(width=640, height=480, use_picamera2=True)
+    detector = QRLiveDetectorPi5(width=1280, height=960, use_picamera2=True)
+
     # Start detection
     detector.run_detection()
 
