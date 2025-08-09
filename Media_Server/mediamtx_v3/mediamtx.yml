@@ -721,7 +721,7 @@ pathDefaults:
 # for example "~^prefix" will match all paths that start with "prefix".
 paths:
   cam1:
-    runOnDemand: bash -c 'rpicam-vid -t 0 --camera 0 --nopreview --mode 1640:1232 --tunning-file ~/mediamtx/imx219_noir.json --shutter 6000 --gain 2 --codec yuv420 --width 1280 --height 960 --framerate 15 --inline --listen -o - | ffmpeg -f rawvideo -pix_fmt yuv420p -s:v 1280x960 -framerate 15 -i /dev/stdin -c:v libx264 -preset ultrafast -tune zerolatency -f rtsp rtsp://localhost:$RTSP_PORT/$MTX_PATH'
+    runOnDemand: bash -c 'rpicam-vid -t 0 --camera 0 --nopreview --mode 1640:1232 --tuning-file ~/mediamtx/imx219_noir.json --shutter 6000 --gain 2 --codec yuv420 --width 1280 --height 960 --framerate 15 --inline --listen -o - | ffmpeg -f rawvideo -pix_fmt yuv420p -s:v 1280x960 -framerate 15 -i /dev/stdin -c:v libx264 -preset ultrafast -tune zerolatency -f rtsp rtsp://localhost:$RTSP_PORT/$MTX_PATH'
     runOnDemandRestart: yes
     runOnDemandCloseAfter: 10s
     
