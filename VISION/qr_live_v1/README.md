@@ -25,7 +25,7 @@ This project provides a robust, high-performance QR code scanning application de
 3.  **Create a Virtual Environment (Linux):**
     It is recommended to use a virtual environment to manage the dependencies for this project.
     ```bash
-    python3 -m venv qrcode_env
+    python3 -m venv --system-site-packages qrcode_env 
     source qrcode_env/bin/activate
     ```
 
@@ -40,6 +40,14 @@ This project provides a robust, high-performance QR code scanning application de
 The application is run from the command line, with the video source provided as an argument.
 
 ### Running with a Live RTSP Stream
+
+> **Important for RTSP/HTTP Streams:**
+> To ensure a stable video stream, you **must use the `mediamtx_v3` server**. Other versions or different streaming servers are not compatible.
+>
+> Please follow the exact setup instructions from the following repository:
+>
+> 👉 **[Required: mediamtx_v2 Setup](https://github.com/amirholakoo/AISM/tree/main/Media_Server/mediamtx_v3)**
+
 
 To connect to a live RTSP stream (e.g., from a camera connected to a MediaMTX server), use the following command:
 ```bash
