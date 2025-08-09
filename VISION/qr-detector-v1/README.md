@@ -22,7 +22,9 @@ matplotlib>=3.5.0
 
 1. **Clone the Repository:**
    ```bash
+   
    git clone https://github.com/amirholakoo/qr-detector-v1.git
+   
    cd qr-detector-v1
    ```
 
@@ -30,21 +32,27 @@ matplotlib>=3.5.0
    ```bash
    python -m venv qr-env
    source qr-env/bin/activate  # Linux/Mac
+   
    # OR
    qr-env\Scripts\activate     # Windows
    ```
 
 3. **Install Dependencies:**
    ```bash
+   
    pip install -r requirements.txt
+   
    ```
 
 
 ### Quick Start
 ```bash
 # Run the tuned version (uses your custom tuning file if configured)
+
 python qr-live-picamera.py
 
 # Or run the generic version (no tuning file required)
+
 python qr-live-picamera3.py
+
 ```
