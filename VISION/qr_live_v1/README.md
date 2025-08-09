@@ -48,7 +48,7 @@ The application is run from the command line, with the video source provided as 
 >
 > 👉 **[Required: mediamtx_v3 Setup](https://github.com/amirholakoo/AISM/tree/main/Media_Server/mediamtx_v3)**
 
-
+**Important note**: When you want to run the app with python command, you must use dir3ectly the rasberry terminal not ssh as the UI is not available through ssh.
 To connect to a live RTSP stream (e.g., from a camera connected to a MediaMTX server), use the following command:
 ```bash
 python robust_live_qr.py "rtsp://<your-stream-ip>:<port>/<stream-name>"
@@ -57,6 +57,7 @@ Example:
 ```bash
 python robust_live_qr.py "rtsp://192.168.237.102:8554/cam1"
 ```
+**Important note**: When you want to run the app with python command, you must use dir3ectly the rasberry terminal not ssh as the UI is not available through ssh.
 
 ### Running with a Local Video File
 
