@@ -82,6 +82,20 @@ Setting up on a Raspberry Pi requires installing system-level dependencies for t
     pip install -r requirements.txt
     ```
 
+### Video Source Configuration
+
+This application supports multiple video sources:
+- **Local Video File**: Provide the path to a local video file (e.g., `/path/to/video.mp4`).
+- **Picamera (Raspberry Pi)**: Use the special keyword `picamera` to use the connected camera module.
+- **RTSP/HTTP Stream**: Provide the full URL of the network stream.
+
+> **Important for RTSP/HTTP Streams:**
+> To ensure a stable video stream, you **must use the `mediamtx_v2` server**. Other versions or different streaming servers are not compatible.
+>
+> Please follow the exact setup instructions from the following repository:
+>
+> 👉 **[Required: mediamtx_v2 Setup](https://github.com/amirholakoo/AISM/tree/main/Media_Server/mediamtx_v2)**
+
 ## How to Run
 
 1.  **Activate your virtual environment**:
