@@ -1,6 +1,6 @@
 # QR Code Live Detection System
 
-A high-performance QR code detection system optimized for both Raspberry Pi 5 and desktop computers. This system provides real-time QR code detection with advanced preprocessing techniques and unique code tracking.
+A high-performance QR code detection system optimized for Raspberry Pi 5. This system provides real-time QR code detection with advanced preprocessing techniques and unique code tracking.
 
 
 ## Requirements
@@ -42,10 +42,9 @@ matplotlib>=3.5.0
 
 ### Quick Start
 ```bash
-# Run Raspberry Pi live detector (recommended)
+# Run the tuned version (uses your custom tuning file if configured)
 python qr-live-picamera.py
 
-# Or run the tuned version (if you have a custom tuning file configured)
-python qr-live-picamera.py
-
+# Or run the generic version (no tuning file required)
+python qr-live-picamera3.py
 ```

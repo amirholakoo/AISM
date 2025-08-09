@@ -51,7 +51,7 @@ class QRLiveDetectorPi5:
         try:
             
             # Added by RASM
-            tuning = Picamera2.load_tuning_file("/home/admin/main/camera_config/imx219_noir.json")
+            tuning = Picamera2.load_tuning_file("imx219_noir.json")
             
             # edited by RASM ( tunung file added in setup)
             self.picam2 = Picamera2(tuning=tuning)
@@ -61,7 +61,7 @@ class QRLiveDetectorPi5:
             config = self.picam2.create_preview_configuration(
                 main={"size": (self.width, self.height), "format": "RGB888"},)
             #tuning-file=tuning_file_path
-            config["raw"]["size"] = (1640, 1232)
+            config["raw"]["size"] = (1280, 960)
 
         
             
