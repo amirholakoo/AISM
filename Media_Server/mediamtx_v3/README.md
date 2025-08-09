@@ -62,9 +62,9 @@ You now need to copy the configuration and tuning files from this repository int
 ```bash
 # This command copies our custom .yml file, overwriting the default one.
 # It also copies the camera tuning files.
-cp ./mediamtx.yml ~/mediamtx/mediamtx.yml
-cp ./imx219_noir.json ~/mediamtx/imx219_noir.json
-cp ./ov5647_noir.json ~/mediamtx/ov5647_noir.json
+cp ~/AISM/Media_Server/mediamtx_v2/ov5647_noir.json ~/mediamtx
+cp ~/AISM/Media_Server/mediamtx_v2/imx219_noir.json ~/mediamtx
+cp ~/AISM/Media_Server/mediamtx_v2/mediamtx.yml ~/mediamtx
 ```
 
 **Option B: Manually**
