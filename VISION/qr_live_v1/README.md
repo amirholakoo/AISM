@@ -55,7 +55,7 @@ python robust_live_qr.py "rtsp://<your-stream-ip>:<port>/<stream-name>"
 ```
 Example:
 ```bash
-python robust_live_qr.py "rtsp://192.168.237.102:8554/cam1"
+python robust_live_qr.py rtsp://192.168.237.102:8554/cam1
 ```
 **Important note**: When you want to run the app with python command, you must use direectly the rasberry terminal not ssh as the UI is not available through ssh.
 
