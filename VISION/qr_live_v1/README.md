@@ -14,7 +14,7 @@ This project provides a robust, high-performance QR code scanning application de
 
 1. **Clone the AISM Repository:**
     ```bash
-    git https://github.com/amirholakoo/AISM.git
+    git clone https://github.com/amirholakoo/AISM.git
     ```
 
 2.  **Navigate to the Project Directory:**
