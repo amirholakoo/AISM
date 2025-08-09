@@ -721,7 +721,7 @@ pathDefaults:
 # for example "~^prefix" will match all paths that start with "prefix".
 paths:
   cam1:
-    runOnDemand: bash -c 'rpicam-vid -t 0 --camera 0 --nopreview --mode 1640:1232 --tuning-file ~/mediamtx/imx219_noir.json --shutter 6000 --gain 2 --codec yuv420 --width 1280 --height 960 --framerate 15 --inline --listen -o - | ffmpeg -f rawvideo -pix_fmt yuv420p -s:v 1280x960 -framerate 15 -i /dev/stdin -c:v libx264 -preset ultrafast -tune zerolatency -f rtsp rtsp://localhost:$RTSP_PORT/$MTX_PATH'
+    runOnDemand: bash -c 'rpicam-vid -t 0 --camera 0 --nopreview --mode 1640:1232 --tuning-file ~/mediamtx/imx219_noir.json --shutter 8000 --gain 4 --codec yuv420 --width 1280 --height 960 --framerate 15 --inline --listen -o - | ffmpeg -f rawvideo -pix_fmt yuv420p -s:v 1280x960 -framerate 15 -i /dev/stdin -c:v libx264 -preset ultrafast -tune zerolatency -f rtsp rtsp://localhost:$RTSP_PORT/$MTX_PATH'
     runOnDemandRestart: yes
     runOnDemandCloseAfter: 10s
     
@@ -740,7 +740,7 @@ paths:
 
     # 1. Use your custom-modified tuning file.
     #    This automatically includes your Bayer and Exposure modifications.
-    rpiCameraTuningFile: imx219_noir.json
+    rpiCameraTuningFile: ~/mediamtx/imx219_noir.json
 
     # 2. Auto-White Balance setting
     rpiCameraMode: 1640:1232
