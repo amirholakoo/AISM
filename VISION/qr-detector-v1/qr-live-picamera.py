@@ -1,3 +1,8 @@
+"""
+QR Code Live Detection for Raspberry Pi 5 using PiCamera2
+Optimized version specifically for Raspberry Pi 5 camera module
+"""
+
 import cv2
 import numpy as np
 import os
@@ -19,7 +24,7 @@ OUTPUT_PATH = 'results'
 os.makedirs(OUTPUT_PATH, exist_ok=True)
 
 class QRLiveDetectorPi5:
-    def __init__(self, width=1280, height=720, use_picamera2=True):
+    def __init__(self, width=1280, height=960, use_picamera2=True):
         """Initialize the live QR detector for Raspberry Pi 5"""
         self.width = width
         self.height = height
@@ -43,14 +48,30 @@ class QRLiveDetectorPi5:
     def setup_picamera2(self):
         """Setup using PiCamera2 (recommended for Pi 5)"""
         try:
-            self.picam2 = Picamera2()
+            
+            # Added by RASM
+            tuning = Picamera2.load_tuning_file("/home/admin/main/camera_config/imx219_noir.json")
+            
+            # edited by RASM ( tunung file added in setup)
+            self.picam2 = Picamera2(tuning=tuning)
+            
             
             # Configure camera
             config = self.picam2.create_preview_configuration(
-                main={"size": (self.width, self.height), "format": "BGR888"}
-            )
+                main={"size": (self.width, self.height), "format": "RGB888"},)
+            #tuning-file=tuning_file_path
+            config["raw"]["size"] = (1640, 1232)
+
+        
+            
+            # self.picam2.set_controls({
+                # "ColourGains": (0.9, 1.2),  # red gain, blue gain (example values)
+            # })            
+            
             self.picam2.configure(config)
             self.picam2.start()
+            
+        
             
             # Allow camera to warm up
             time.sleep(2)
@@ -88,7 +109,7 @@ class QRLiveDetectorPi5:
             # PiCamera2 capture
             frame = self.picam2.capture_array()
             # Convert RGB to BGR for OpenCV
-            frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+            #frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
             return True, frame
         elif self.cap:
             # OpenCV capture
@@ -168,9 +189,9 @@ class QRLiveDetectorPi5:
         # Create output data structure with focus on unique detections
         output_data = {
             'metadata': {
-                'device': 'Raspberry Pi 5',
-                'camera_type': 'PiCamera2' if self.picam2 else 'OpenCV',
-                'resolution': f"{self.width}x{self.height}",
+                #'device': 'Raspberry Pi 5',
+                #'camera_type': 'PiCamera2' if self.picam2 else 'OpenCV',
+                #'resolution': f"{self.width}x{self.height}",
                 'unique_qr_codes': len(self.unique_qr_codes),
                 'session_start': self.detected_qr_codes[0]['timestamp'],
                 'session_end': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -318,7 +339,7 @@ def main():
     print("🔧 Initializing QR Live Detection for Raspberry Pi 5...")
     
     # Create detector (will auto-select best camera method)
-    detector = QRLiveDetectorPi5(width=1280, height=720, use_picamera2=True)
+    detector = QRLiveDetectorPi5(width=640, height=480, use_picamera2=True)
     
     # Start detection
     detector.run_detection()
