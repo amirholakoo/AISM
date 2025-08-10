@@ -53,15 +53,17 @@ class QRLiveDetectorPi5:
             # Added by RASM
             tuning = Picamera2.load_tuning_file("imx219_noir.json")
             
-            # edited by RASM ( tunung file added in setup)
+            # Edited by RASM (tuning file applied in setup)
             self.picam2 = Picamera2(tuning=tuning)
+            #self.picam2 = Picamera2()
             
             
             # Configure camera
             config = self.picam2.create_preview_configuration(
                 main={"size": (self.width, self.height), "format": "RGB888"},)
-            #tuning-file=tuning_file_path
-            config["raw"]["size"] = (1280, 960)
+            # tuning file path example (if needed): tuning_file_path
+            config["raw"]["size"] = (1296, 972)
+            # Raw stream size: 1296x972
 
         
             
@@ -77,14 +79,14 @@ class QRLiveDetectorPi5:
             # Allow camera to warm up
             time.sleep(2)
             
-            # Force manual exposure to mitigate motion blur under vibration
+            # Apply exposure controls (tune as needed for your lighting)
             try:
                 self.picam2.set_controls({
-                    "AeEnable": False,      # disable auto exposure
+                    "AeEnable": True,      # enable auto exposure (set False for fully manual)
                     "ExposureTime": 4000,   # microseconds (≈ 1/250s)
-                    "AnalogueGain": 2.0    # adjust if image is too dark/bright
+                    "AnalogueGain": 8.0    # adjust if image is too dark/bright
                 })
-                print("🔧 Manual exposure applied: 4000µs, gain 2.0")
+                print("🔧 Exposure controls applied: 4000µs, gain 8.0")
             except Exception as e_ctrl:
                 print(f"⚠️  Could not apply manual exposure controls: {e_ctrl}")
             

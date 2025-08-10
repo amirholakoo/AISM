@@ -1,0 +1,22 @@
+{
+    "run_start_time": "2025-08-04T18:06:17.166304+03:30",
+    "run_finish_time": "2025-08-04T18:13:00.788340+03:30",
+    "qrcodes": [
+        {
+            "content": "Reel Number: 1482,\nWidth: 240,\nGSM: 130,\nLength:~ 6300,\nBreaks: 0,\nGrade: Testliner HOMAYOUN",
+            "timestamp": "2025-08-04T18:06:48.724914+03:30"
+        },
+        {
+            "content": "978953",
+            "timestamp": "2025-08-04T18:06:57.679682+03:30"
+        },
+        {
+            "content": "477338",
+            "timestamp": "2025-08-04T18:07:55.155976+03:30"
+        },
+        {
+            "content": "384327",
+            "timestamp": "2025-08-04T18:11:58.881232+03:30"
+        }
+    ]
+}
