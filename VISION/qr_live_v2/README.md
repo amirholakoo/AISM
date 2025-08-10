@@ -19,7 +19,7 @@ This project provides a robust, high-performance QR code scanning application de
 
 2.  **Navigate to the Project Directory:**
     ```bash
-    cd AISM/VISION/qr_live_v1
+    cd AISM/VISION/qr_live_v2
     ```
 
 3.  **Create a Virtual Environment (Linux):**
