@@ -9,7 +9,7 @@ This version is optimized for deployment on a **Raspberry Pi** with a connected 
 ## Key Features
 
 - **Accurate Object Detection**:
-    - Utilizes a custom-trained `YOLOv11n` model (`final_yolov11n_640_100epoch.pt`) for high-speed, accurate detection of forklifts and materials.
+    - Utilizes a custom-trained `YOLOv11n` model for high-speed, accurate detection of forklifts and materials.
 - **Region-Based Counting Logic**:
     - Employs a large, configurable central zone for counting, making the system more robust against accidental or repeated line crossings.
 - **Live UI Dashboard**: A user-friendly Streamlit interface displays:
@@ -29,6 +29,18 @@ This version is optimized for deployment on a **Raspberry Pi** with a connected 
     - **Resilient Connectivity**: Automatically retries connecting to a network stream if the connection is unstable.
 
 ## Setup & Installation
+
+**Do the installation commands in Home directory**
+
+1. **Clone the AISM Repository:**
+    ```bash
+    git clone https://github.com/amirholakoo/AISM.git
+    ```
+
+2.  **Navigate to the Project Directory:**
+    ```bash
+    cd AISM/VISION/Smart_Warehouse_Vision_V2
+    ```
 
 ### On a Standard Computer (for Development)
 
@@ -78,7 +90,7 @@ Setting up on a Raspberry Pi requires installing system-level dependencies for t
     ```
 
 2.  **Ensure the Model is Present**:
-    Make sure the `final_yolov11n_640_100epoch.pt` file is in the root directory of the project.
+    Make sure the `100_epoch_650_yolov11n_v2.pt` file is in the root directory of the project.
 
 3.  **Start the Application**:
     ```bash
