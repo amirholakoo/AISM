@@ -22,7 +22,6 @@ git clone https://github.com/amirholakoo/AISM.git
 ```bash
 cd AISM/Media_Server/mediamtx_v3
 ```
-*Replace `<URL_OF_YOUR_REPOSITORY>` with the actual Git URL and `your-repo-name` with the directory name.*
 
 ### 2. Install Dependencies
 
