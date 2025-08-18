@@ -1,0 +1,8 @@
+*.mp4
+*.avi
+*.mkv
+*.mov
+
+__pycache__/
+*.pyc
+.streamlit/
