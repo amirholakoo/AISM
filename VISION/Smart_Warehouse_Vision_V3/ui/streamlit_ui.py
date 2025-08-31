@@ -159,7 +159,7 @@ class StreamlitUI:
             if self.vp.latest_frame is not None:
                 frame_placeholder.image(
                     cv2.cvtColor(self.vp.latest_frame, cv2.COLOR_BGR2RGB), 
-                    use_container_width=True
+                    width="stretch"
                 )
             
             # Display current statistics
@@ -187,7 +187,7 @@ class StreamlitUI:
                     columns=['Timestamp', 'Status', 'Track ID', 'Location', 'Product Type', 'Snapshot']
                 )
                 df = df.sort_values(by='Timestamp', ascending=False).reset_index(drop=True)
-                events_placeholder.dataframe(df, use_container_width=True)
+                events_placeholder.dataframe(df, width="stretch")
             
             # Small delay to prevent excessive CPU usage
             time.sleep(0.02)
