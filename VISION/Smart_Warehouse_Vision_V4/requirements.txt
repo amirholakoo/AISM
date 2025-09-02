@@ -23,11 +23,6 @@ tqdm>=4.64.0
 # Additional packages for Raspberry Pi
 imutils>=0.5.4
 
-# Additional dependencies for specific models or features
-# e.g., scipy for certain tracking algorithms
-# some_other_library
-# ... etc.
-
 # For PiCamera support
 picamera2; platform_system == 'Linux'
 
@@ -35,6 +30,9 @@ picamera2; platform_system == 'Linux'
 uvicorn
 fastapi
 python-multipart 
+
+filterpy
+
 
 # Add onnxruntime for optimized inference
 onnxruntime
