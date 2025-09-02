@@ -88,7 +88,7 @@ Setting up on a Raspberry Pi requires installing system-level dependencies for t
 ## How to Run
 
 1.  **Ensure the Model is Present**:
-    Make sure the `final_yolov11n_640_100epoch.onnx` file is in the root directory of the project.
+    Make sure the `100_epoch_650_yolov11n_v3.onnx` file is in the root directory of the project.
 
 2.  **Start the Application**:
     ```bash
