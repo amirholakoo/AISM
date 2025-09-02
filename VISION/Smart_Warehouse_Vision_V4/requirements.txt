@@ -39,7 +39,7 @@ python-multipart
 # Add onnxruntime for optimized inference
 onnxruntime
 # Add onnx-simplifier for model optimization during export (optional but recommended)
-onnx-simplifier
+onnxslim==0.1.65
 
 Pillow
 pytz
