@@ -87,15 +87,10 @@ Setting up on a Raspberry Pi requires installing system-level dependencies for t
 
 ## How to Run
 
-1.  **Activate your virtual environment**:
-    ```bash
-    source venv/bin/activate
-    ```
-
-2.  **Ensure the Model is Present**:
+1.  **Ensure the Model is Present**:
     Make sure the `final_yolov11n_640_100epoch.onnx` file is in the root directory of the project.
 
-3.  **Start the Application**:
+2.  **Start the Application**:
     ```bash
     streamlit run main.py
     ```
