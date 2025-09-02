@@ -150,7 +150,7 @@ class StreamlitUI:
             if self.vp.latest_frame is not None:
                 frame_placeholder.image(
                     cv2.cvtColor(self.vp.latest_frame, cv2.COLOR_BGR2RGB), 
-                    use_container_width=True
+                    width='Stretch'
                 )
             
             # Display current statistics

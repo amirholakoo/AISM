@@ -161,7 +161,7 @@ class VideoProcessor:
             try:
                 logger.info("Initializing Raspberry Pi camera.")
                 picam2 = Picamera2()
-                config = picam2.create_video_configuration(main={"size": (1280, 720), "format": "RGB888"})
+                config = picam2.create_video_configuration(main={"size": (1280, 960), "format": "RGB888"}, raw={'size': (1640, 1232)},controls={'FrameDurationLimits':(166667,166667)})
                 picam2.configure(config)
                 picam2.start()
                 time.sleep(2.0) # Allow camera to warm up
