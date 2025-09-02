@@ -98,10 +98,19 @@ Setting up on a Raspberry Pi requires installing system-level dependencies for t
 
 ## Using the Application
 
+### Video Input Sources
+
+The system supports multiple video input sources:
+
+- **PiCamera**: Enter `picamera` to use the Raspberry Pi camera module directly
+- **RTSP Stream**: Enter an RTSP URL (e.g., `rtsp://192.168.1.100:554/stream`)
+- **HTTP Stream**: Enter an HTTP video stream URL
+- **Local Video File**: Enter the path to a local video file
+
 ### Workflow
 
 1.  **Configure Settings**: The counting zone and other parameters are pre-configured in `config/warehouse_config.py`.
-2.  **Start Processing**: Enter your video source and click the "▶️ Start Processing" button.
+2.  **Start Processing**: Enter your video source (use `picamera` for Raspberry Pi camera or provide an RTSP link/video file path) and click the "▶️ Start Processing" button.
 3.  **Monitor Live**: Observe the live feed, counts, and event log. A "SYSTEM READY" message will indicate that the video stream is stable.
 4.  **Stop and Review**:
     - Click "⏹️ Stop Processing" to end the session.
