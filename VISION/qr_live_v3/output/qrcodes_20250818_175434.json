@@ -1,0 +1,26 @@
+{
+    "run_start_time": "2025-08-18T17:54:34.740862+03:30",
+    "run_finish_time": "2025-08-18T17:55:06.097158+03:30",
+    "qrcodes": [
+        {
+            "content": "Reel Number: 1193,\nWidth: 240,\nGSM: 130,\nLength:~ 6300,\nBreaks: 0,\nGrade: Testliner HOMAYOUN",
+            "timestamp": "2025-08-18T17:54:49.442565+03:30"
+        },
+        {
+            "content": "Reel Number: 1482,\nWidth: 240,\nGSM: 130,\nLength:~ 6300,\nBreaks: 0,\nGrade: Testliner HOMAYOUN",
+            "timestamp": "2025-08-18T17:54:57.593626+03:30"
+        },
+        {
+            "content": "Reel Number: 1193,\nWidth: 240,\nGSM: 130,\nLength:~ 6300,\nBreaks: 0,\nGrade: Testliner HOMAYOUN",
+            "timestamp": "2025-08-18T17:54:59.725871+03:30"
+        },
+        {
+            "content": "Reel Number: 1482,\nWidth: 240,\nGSM: 130,\nLength:~ 6300,\nBreaks: 0,\nGrade: Testliner HOMAYOUN",
+            "timestamp": "2025-08-18T17:55:03.259160+03:30"
+        },
+        {
+            "content": "Reel Number: 1193,\nWidth: 240,\nGSM: 130,\nLength:~ 6300,\nBreaks: 0,\nGrade: Testliner HOMAYOUN",
+            "timestamp": "2025-08-18T17:55:04.199253+03:30"
+        }
+    ]
+}
