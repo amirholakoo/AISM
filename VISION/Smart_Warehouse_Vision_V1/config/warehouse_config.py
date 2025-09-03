@@ -19,26 +19,24 @@ class WarehouseConfig:
     }
     
     # Model Configuration
-    WEIGHTS_DEFAULT = 'pallete_yolov8n.pt'  # Ensure you have this weights file
+    WEIGHTS_DEFAULT = 'pallete_yolov8n.pt'  
     
-    # New Pallete Model Class Definitions
-    # Assuming class IDs are 0: empty, 1: sulfat, 2: pack_material, 3: neshaste
     PALLETE_CLASS_MAP = {
         0: "empty_forklift",
         1: "sulfat",
         2: "pack_material",
         3: "neshaste"
     }
-    LOADED_PALLETE_CLASSES = {1, 2, 3}  # Classes representing a loaded forklift
-    EMPTY_PALLETE_CLASS = 0             # Class representing an empty forklift
+    LOADED_PALLETE_CLASSES = {1, 2, 3}  
+    EMPTY_PALLETE_CLASS = 0            
 
     # Detection Parameters
-    MODEL_INPUT_SIZE_DEFAULT = 1280  # New: Default model input size
+    MODEL_INPUT_SIZE_DEFAULT = 1280  
     LINE_X_DEFAULT = 900
     FRAME_SKIP_DEFAULT = 3
     IOU_THRESH_DEFAULT = 0.3
     CONF_THRESH_DEFAULT = 0.3
-    EVENT_COOLDOWN_SECONDS = 5  # New: Cooldown in seconds between events for the same track
+    EVENT_COOLDOWN_SECONDS = 5 
     
     # System Configuration
     TIMEZONE = ZoneInfo('Asia/Tehran')
