@@ -1,8 +1,6 @@
 from ultralytics import YOLO
 
-# --- Configuration ---
-# Path to your new fine-tuned PyTorch model.
-# <<<<<<< IMPORTANT: UPDATE THIS FILENAME IF NEEDED >>>>>>>>>
+
 PT_MODEL_PATH = "100_epoch_650_yolov11n_v3.pt"
 
 # --- Main Export Logic ---
@@ -26,11 +24,11 @@ def main():
     try:
         model.export(
             format='onnx',
-            imgsz=640,          # The base image size the model was trained on
-            dynamic=True,       # CRITICAL: Allows for variable input sizes
-            simplify=True,      # Optimizes the graph for faster inference
-            opset=12,           # A stable ONNX opset version
-            nms=True            # RECOMMENDED: Bakes post-processing into the model
+            imgsz=640,          
+            dynamic=True,      
+            simplify=True,      
+            opset=12,          
+            nms=True            
         )
         output_filename = PT_MODEL_PATH.replace('.pt', '.onnx')
         print(f"✅ ONNX model exported successfully!")

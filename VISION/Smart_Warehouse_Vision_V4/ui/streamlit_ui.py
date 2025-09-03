@@ -46,7 +46,6 @@ class StreamlitUI:
             
         self.vp: VideoProcessor = st.session_state.vp
         
-        # Hardcoded settings that are not user-configurable
         self.location = "انبار سنگین"  # Heavy Warehouse in Persian
         self.weights = WarehouseConfig.WEIGHTS_DEFAULT
         self.iou = WarehouseConfig.IOU_THRESH_DEFAULT
@@ -61,9 +60,7 @@ class StreamlitUI:
         )
         st.title("📹 Smart Warehouse CV Dashboard")
         
-        # self._render_sidebar() # Sidebar removed for production
 
-        # Main application flow controller
         if st.session_state.running:
             self._render_live_display()
         elif st.session_state.summary_data:
@@ -80,7 +77,6 @@ class StreamlitUI:
 
     def _render_sidebar(self):
         """Render the sidebar with configuration options."""
-        # This function is no longer called in production mode.
         pass
 
     def _render_processing_interface(self, is_demo: bool):
@@ -101,7 +97,6 @@ class StreamlitUI:
                 help="Enter a network stream URL (RTSP/HTTP) or a path to a local video file."
             )
 
-        # The "Start" button is the only control needed here now
         if st.button(
             "▶️ Start Processing", 
             disabled=st.session_state.running, 
@@ -113,7 +108,7 @@ class StreamlitUI:
             st.session_state.manual_edit_mode = False
             st.session_state.system_ready = False  # Reset on start
             
-            # Create a new VideoProcessor instance each time to ensure a clean state
+
             self.vp = VideoProcessor()
             st.session_state.vp = self.vp
 
@@ -137,19 +132,18 @@ class StreamlitUI:
 
     def _render_live_display(self):
         """Render live video display with real-time statistics and event table."""
-        # Show "System Ready" message once connected
+
         if st.session_state.get('system_ready', False):
             st.success("✅ SYSTEM READY: Forklift can now proceed.")
 
-        # Stop button at the top of the live view
+
         if st.button("⏹️ Stop Processing", key="stop_live"):
             summary = self.vp.stop_processing()
             st.session_state.summary_data = summary
             st.session_state.running = False
-            st.session_state.system_ready = False # Reset on stop
+            st.session_state.system_ready = False 
             st.rerun()
 
-        # Improved layout with columns
         main_view, side_info = st.columns([3, 2])
 
         with main_view:
@@ -160,8 +154,7 @@ class StreamlitUI:
             st.subheader("Live Event Log")
             events_placeholder = st.empty()
 
-        # We now revert to the while loop, which is the correct pattern to prevent
-        # the entire page from flashing on every frame update.
+
         display_start_time = time.time()
         while st.session_state.running and self.vp.is_running:
             # Display latest frame if available
@@ -170,7 +163,7 @@ class StreamlitUI:
                     cv2.cvtColor(self.vp.latest_frame, cv2.COLOR_BGR2RGB), 
                     width='stretch'
                 )
-            # If no frame has appeared after 5 seconds, show a warning.
+
             elif time.time() - display_start_time > 5:
                 frame_placeholder.warning("⏳ Waiting for video stream... Please ensure the source is active and check logs for errors.")
 
@@ -200,11 +193,10 @@ class StreamlitUI:
                 )
                 df = df.sort_values(by='Timestamp', ascending=False).reset_index(drop=True)
                 events_placeholder.dataframe(df, width='stretch')
-            
-            # This sleep controls the UI refresh rate.
+
             time.sleep(0.04)
         
-        # Handle case where processing stopped unexpectedly while the UI was trying to render
+
         if st.session_state.running:
             st.session_state.running = False
             st.warning("Processing stopped.")
@@ -217,7 +209,7 @@ class StreamlitUI:
         Args:
             summary: Session summary dictionary
         """
-        # Prepare data payload
+
         payload = {
             "total_products": summary["total_products"],
             "operation_type": summary["operation_type"],
@@ -227,11 +219,10 @@ class StreamlitUI:
             "events": summary["events"]
         }
         
-        # Generate filename with timestamp
+
         filename = f"events_{datetime.now(WarehouseConfig.TIMEZONE).strftime('%Y%m%d_%H%M%S')}.json"
         json_data = json.dumps(payload, indent=4)
 
-        # Save to file
         try:
             with open(filename, "w") as f:
                 f.write(json_data)
@@ -239,7 +230,7 @@ class StreamlitUI:
         except Exception as e:
             st.error(f"⚠️ Failed to save file: {e}")
 
-        # Reset state
+
         st.session_state["summary_data"] = None
         st.session_state["json_ready"] = False
         st.session_state["manual_edit_mode"] = False
@@ -252,7 +243,7 @@ class StreamlitUI:
             original_summary: Original session summary dictionary
             edited_events: Dictionary of edited events with corrected product types
         """
-        # Reconstruct events list from edited data
+
         updated_events = []
         for event_idx, event_data in edited_events.items():
             updated_events.append((
@@ -262,15 +253,14 @@ class StreamlitUI:
                 event_data['location'],
                 event_data['product_type']
             ))
-        
-        # Recalculate detailed product counts from edited events
+
         detailed_product_counts = {"loaded": {}, "unloaded": {}}
         loaded_count = 0
         unloaded_count = 0
         
         for event_data in updated_events:
-            status = event_data[1]      # 'loaded' or 'unloaded'
-            product_type = event_data[4] # e.g., 'neshaste', 'sulfat'
+            status = event_data[1]      
+            product_type = event_data[4] 
             
             if status == 'loaded':
                 loaded_count += 1
@@ -291,7 +281,7 @@ class StreamlitUI:
         else:
             operation_type = "none"
         
-        # Format events for output (same structure as automatic detection)
+
         formatted_events = {
             str(i): {
                 "timestamp": event[0],
@@ -303,7 +293,6 @@ class StreamlitUI:
             for i, event in enumerate(updated_events)
         }
         
-        # Create updated summary with same structure as automatic detection
         updated_summary = {
             "total_products": total_products,
             "operation_type": operation_type,
@@ -314,15 +303,15 @@ class StreamlitUI:
             "events": formatted_events
         }
         
-        # Prepare data payload (identical structure to automatic detection)
+
         payload = updated_summary.copy()
-        payload["manual_edit"] = True  # Only difference - flag for manual edit
+        payload["manual_edit"] = True  
         
-        # Generate filename with timestamp
+   
         filename = f"events_manual_{datetime.now(WarehouseConfig.TIMEZONE).strftime('%Y%m%d_%H%M%S')}.json"
         json_data = json.dumps(payload, indent=4, ensure_ascii=False)
 
-        # Save to file
+
         try:
             with open(filename, "w", encoding='utf-8') as f:
                 f.write(json_data)
@@ -330,7 +319,6 @@ class StreamlitUI:
         except Exception as e:
             st.error(f"⚠️ Failed to save file: {e}")
 
-        # Reset state
         st.session_state["summary_data"] = None
         st.session_state["json_ready"] = False
         st.session_state["manual_edit_mode"] = False
@@ -353,7 +341,7 @@ class StreamlitUI:
             "sulfat": "سولفات آلومینیوم",
         }
         
-        # Get events from summary
+
         events = summary.get("events", {})
         
         if not events:
@@ -366,10 +354,10 @@ class StreamlitUI:
         st.markdown(f"**تعداد کل رویدادها:** {len(events)}")
         st.markdown("---")
         
-        # Create form for editing events
+
         edited_events = {}
         
-        # Display events in chronological order
+
         sorted_events = sorted(events.items(), key=lambda x: x[1]['timestamp'])
         
         for event_idx, (event_id, event_data) in enumerate(sorted_events):
@@ -498,7 +486,7 @@ class StreamlitUI:
             st.rerun()
             return
 
-        # Define Persian translations
+
         PRODUCT_TRANSLATIONS_PERSIAN = {
             "neshaste": "نشاسته",
             "pack_material": "مواد پک",
@@ -520,7 +508,6 @@ class StreamlitUI:
             "none": "بدون عملیات",
         }
 
-        # Construct detailed confirmation message in Persian as a list of lines
         confirmation_lines = ["#### 📋 **تاییدیه عملیات**"]
 
         raw_location = summary.get('location', 'نامشخص')
@@ -564,24 +551,24 @@ class StreamlitUI:
         
         confirmation_lines.append("---")
 
-        # Display the formatted confirmation message
+
         for line in confirmation_lines:
             st.markdown(line)
         
-        st.warning("آیا اطلاعات فوق مورد تایید است؟") # General confirmation question
+        st.warning("آیا اطلاعات فوق مورد تایید است؟") 
         
-        # Action buttons
+
         col1, col2 = st.columns(2)
         
         with col1:
             st.button(
-                "✅ تایید و ذخیره",  # Confirm & Save in Persian
+                "✅ تایید و ذخیره",  
                 key="confirm_save",
                 on_click=self._handle_confirm_click,
                 args=(summary,)
             )
         
         with col2:
-            if st.button("✏️ ویرایش دستی", key="manual_edit"): # Manual Edit in Persian
+            if st.button("✏️ ویرایش دستی", key="manual_edit"): 
                 st.session_state.manual_edit_mode = True
                 st.rerun()

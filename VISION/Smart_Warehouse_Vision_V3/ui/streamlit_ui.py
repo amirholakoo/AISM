@@ -61,7 +61,6 @@ class StreamlitUI:
         
         self._render_sidebar()
 
-        # Main application flow controller
         if st.session_state.running:
             self._render_live_display()
         elif st.session_state.summary_data:
@@ -95,7 +94,7 @@ class StreamlitUI:
             help="Enter a network stream URL (RTSP/HTTP) or a path to a local video file."
         )
 
-        # The "Start" button is the only control needed here now
+
         if st.button(
             "▶️ Start Processing", 
             disabled=st.session_state.running, 
@@ -105,9 +104,8 @@ class StreamlitUI:
             st.session_state.json_ready = False
             st.session_state.summary_data = None
             st.session_state.manual_edit_mode = False
-            st.session_state.system_ready = False  # Reset on start
+            st.session_state.system_ready = False  
             
-            # Create a new VideoProcessor instance each time to ensure a clean state
             self.vp = VideoProcessor()
             st.session_state.vp = self.vp
 
@@ -131,11 +129,9 @@ class StreamlitUI:
 
     def _render_live_display(self):
         """Render live video display with real-time statistics and event table."""
-        # Show "System Ready" message once connected
         if st.session_state.get('system_ready', False):
             st.success("✅ SYSTEM READY: Forklift can now proceed.")
 
-        # Stop button at the top of the live view
         if st.button("⏹️ Stop Processing", key="stop_live"):
             summary = self.vp.stop_processing()
             st.session_state.summary_data = summary
@@ -143,7 +139,6 @@ class StreamlitUI:
             st.session_state.system_ready = False # Reset on stop
             st.rerun()
 
-        # Improved layout with columns
         main_view, side_info = st.columns([3, 2])
 
         with main_view:
@@ -162,7 +157,6 @@ class StreamlitUI:
                     width="stretch"
                 )
             
-            # Display current statistics
             counts = self.vp.tracker.counts
             fps = self.vp.processing_fps
             inference_ms = self.vp.inference_time_ms
@@ -179,7 +173,6 @@ class StreamlitUI:
                 with col3:
                     st.metric("Inference Time", f"{inference_ms:.1f} ms")
 
-            # Display live event table
             events = self.vp.tracker.events
             if events:
                 df = pd.DataFrame(
@@ -189,10 +182,8 @@ class StreamlitUI:
                 df = df.sort_values(by='Timestamp', ascending=False).reset_index(drop=True)
                 events_placeholder.dataframe(df, width="stretch")
             
-            # Small delay to prevent excessive CPU usage
             time.sleep(0.02)
         
-        # Handle case where processing stopped unexpectedly
         if st.session_state.running:
             st.session_state.running = False
             st.warning("Processing stopped.")
@@ -205,7 +196,7 @@ class StreamlitUI:
         Args:
             summary: Session summary dictionary
         """
-        # Prepare data payload
+
         payload = {
             "total_products": summary["total_products"],
             "operation_type": summary["operation_type"],
@@ -215,7 +206,6 @@ class StreamlitUI:
             "events": summary["events"]
         }
         
-        # Generate filename with timestamp
         log_dir = "logs"
         os.makedirs(log_dir, exist_ok=True)
         filename = f"events_{datetime.now(WarehouseConfig.TIMEZONE).strftime('%Y%m%d_%H%M%S')}.json"
@@ -252,17 +242,16 @@ class StreamlitUI:
                 event_data['track_id'],
                 event_data['location'],
                 event_data['product_type'],
-                event_data.get('snapshot') # Safely get snapshot
+                event_data.get('snapshot')
             ))
-        
-        # Recalculate detailed product counts from edited events
+
         detailed_product_counts = {"loaded": {}, "unloaded": {}}
         loaded_count = 0
         unloaded_count = 0
         
         for event_data in updated_events:
-            status = event_data[1]      # 'loaded' or 'unloaded'
-            product_type = event_data[4] # e.g., 'neshaste', 'sulfat'
+            status = event_data[1]      
+            product_type = event_data[4] 
             
             if status == 'loaded':
                 loaded_count += 1
@@ -271,8 +260,7 @@ class StreamlitUI:
                 
             if status in detailed_product_counts:
                 detailed_product_counts[status][product_type] = detailed_product_counts[status].get(product_type, 0) + 1
-        
-        # Determine operation type
+
         total_products = max(loaded_count, unloaded_count)
         if loaded_count > unloaded_count:
             operation_type = "loaded"
@@ -282,8 +270,7 @@ class StreamlitUI:
             operation_type = "balanced"
         else:
             operation_type = "none"
-        
-        # Format events for output (same structure as automatic detection)
+
         formatted_events = {
             str(i): {
                 "timestamp": event[0],
@@ -296,7 +283,7 @@ class StreamlitUI:
             for i, event in enumerate(updated_events)
         }
         
-        # Create updated summary with same structure as automatic detection
+
         updated_summary = {
             "total_products": total_products,
             "operation_type": operation_type,
@@ -306,24 +293,21 @@ class StreamlitUI:
             "detailed_product_counts": detailed_product_counts,
             "events": formatted_events
         }
-        
-        # Prepare data payload (identical structure to automatic detection)
+   
         payload = updated_summary.copy()
-        payload["manual_edit"] = True  # Only difference - flag for manual edit
+        payload["manual_edit"] = True  
         
-        # Add snapshot to the payload's events
         for event_id, event_data in payload["events"].items():
             original_event = original_summary["events"].get(event_id, {})
             event_data["snapshot"] = original_event.get("snapshot")
 
-        # Generate filename with timestamp
+
         log_dir = "logs"
         os.makedirs(log_dir, exist_ok=True)
         filename = f"events_manual_{datetime.now(WarehouseConfig.TIMEZONE).strftime('%Y%m%d_%H%M%S')}.json"
         filepath = os.path.join(log_dir, filename)
         json_data = json.dumps(payload, indent=4, ensure_ascii=False)
 
-        # Save to file
         try:
             with open(filepath, "w", encoding='utf-8') as f:
                 f.write(json_data)
@@ -347,14 +331,12 @@ class StreamlitUI:
         st.subheader("✏️ ویرایش دستی - اصلاح تشخیص محصولات")
         st.info("برای هر رویداد تشخیص (عبور فرک‌لیفت از خط)، نوع محصول صحیح را انتخاب کنید.")
         
-        # Product types from config
         PRODUCT_TYPES = {
             "neshaste": "نشاسته",
             "pack_material": "مواد پک", 
             "sulfat": "سولفات آلومینیوم",
         }
         
-        # Get events from summary
         events = summary.get("events", {})
         
         if not events:
@@ -367,10 +349,8 @@ class StreamlitUI:
         st.markdown(f"**تعداد کل رویدادها:** {len(events)}")
         st.markdown("---")
         
-        # Create form for editing events
         edited_events = {}
         
-        # Display events in chronological order
         sorted_events = sorted(events.items(), key=lambda x: x[1]['timestamp'])
         
         for event_idx, (event_id, event_data) in enumerate(sorted_events):
@@ -382,7 +362,6 @@ class StreamlitUI:
                     st.write(f"⏰ {event_data['timestamp']}")
                 
                 with col2:
-                    # Status (loaded/unloaded) - Read only display
                     status_persian = "بارگیری" if event_data['status'] == 'loaded' else "تخلیه"
                     direction_icon = "📦 ➡️" if event_data['status'] == 'loaded' else "📤 ⬅️"
                     st.write(f"**نوع عملیات:**")
@@ -411,7 +390,6 @@ class StreamlitUI:
                         key=f"product_{event_id}"
                     )
                     
-                    # Store edited event
                     edited_events[event_id] = {
                         'timestamp': event_data['timestamp'],
                         'status': event_data['status'],

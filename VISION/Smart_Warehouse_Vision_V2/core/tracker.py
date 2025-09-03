@@ -36,31 +36,23 @@ class Track:
         self.last_seen_timestamp = datetime.now(WarehouseConfig.TIMEZONE)
         self.counted_direction = None  # 'in' or 'out'
         self.counted_timestamp = None
-        self.zone_entry_position = None  # Stores the (x, y) position where the track entered the counting zone
+        self.zone_entry_position = None  
 
     @staticmethod
     def init_kalman_filter(bbox: Tuple[int, int, int, int]) -> KalmanFilter:
         """Initializes a Kalman Filter for a new track."""
         kf = KalmanFilter(dim_x=7, dim_z=4)
-        # State: [x, y, s, r, dx, dy, ds] (center_x, center_y, scale, aspect_ratio, vel_x, vel_y, vel_s)
         kf.F = np.array([[1,0,0,0,1,0,0], [0,1,0,0,0,1,0], [0,0,1,0,0,0,1], [0,0,0,1,0,0,0],
                         [0,0,0,0,1,0,0], [0,0,0,0,0,1,0], [0,0,0,0,0,0,1]], dtype=float)
         kf.H = np.array([[1,0,0,0,0,0,0], [0,1,0,0,0,0,0], [0,0,1,0,0,0,0], [0,0,0,1,0,0,0]], dtype=float)
         
-        # R: Measurement Noise. How much do we trust the YOLO detection?
-        # Lower values mean we trust the detection more. Here, we trust x,y position
-        # more than the scale/aspect_ratio of the box. This is a good starting point.
+
         kf.R[2:,2:] *= 10.
         
-        # P: Initial State Covariance. How much uncertainty in our initial state?
-        # High uncertainty in velocities because we have no idea how the object is moving initially.
+
         kf.P[4:,4:] *= 1000. 
         kf.P *= 10.
 
-        # Q: Process Noise. How much do we trust the physics model (constant velocity)?
-        # Higher values account for erratic movement (acceleration, turning).
-        # This is the most important parameter to tune for your use case.
-        # We're increasing noise on velocity estimates to make the filter more responsive.
         kf.Q[-1,-1] *= 0.1   # Noise on scale velocity
         kf.Q[4:6,4:6] *= 0.1 # Noise on x and y velocity
 
@@ -77,7 +69,6 @@ class Track:
         self.kf.predict()
         self.age += 1
         self.misses += 1
-        # Update the internal bbox to the new predicted position
         self.bbox = self.to_bbox()
         self.history.append(self.center)
         return self.bbox
@@ -100,15 +91,12 @@ class Track:
         """Converts the Kalman Filter's state to a bounding box robustly."""
         x, y, s, r = self.kf.x[:4, 0]
 
-        # Prevent invalid math from bad predictions by ensuring non-negativity
         s = max(0, s)
         r = max(0, r)
 
         w = np.sqrt(s * r)
-        # Use a more stable formula for h and avoid division by zero
         h = np.sqrt(s / r) if r > 1e-6 else 0
 
-        # Handle potential NaN values from sqrt of negative numbers if state becomes unstable
         if np.isnan(w): w = 0
         if np.isnan(h): h = 0
 
@@ -153,17 +141,14 @@ class ProductTracker:
         """
         Update tracking state with new detections using Kalman Filter and Hungarian Algorithm.
         """
-        # 1. Predict new locations for existing tracks and update their history
         for tid in list(self.tracks.keys()):
             track = self.tracks[tid]
             track.predict()
-            # The history is now updated inside track.predict(), so we don't do it here.
             if track.misses > WarehouseConfig.MAX_MISSES:
                 logger.debug(f"Track {tid} removed due to high misses ({track.misses}).")
                 if tid in self.tracks:
                     del self.tracks[tid]
-        
-        # 2. Associate detections with tracks and create new tracks
+
         unmatched_det_indices = set(range(len(detections)))
         
         if detections and len(self.tracks) > 0:
@@ -176,25 +161,22 @@ class ProductTracker:
                 track_indices, det_indices = linear_sum_assignment(-iou_matrix) # Maximize IoU
                 
                 matched_indices = set()
-                # Update matched tracks
                 for track_idx, det_idx in zip(track_indices, det_indices):
-                    # Check IoU threshold to prevent matching distant objects
                     if iou_matrix[track_idx, det_idx] >= WarehouseConfig.IOU_THRESHOLD:
                         tid = list(self.tracks.keys())[track_idx]
                         bbox, class_id, conf = detections[det_idx]
                         self.tracks[tid].update(bbox, conf)
-                        self.tracks[tid].class_id = class_id # Update class ID on re-detection
+                        self.tracks[tid].class_id = class_id 
                         matched_indices.add(det_idx)
                 
                 unmatched_det_indices = unmatched_det_indices - matched_indices
 
-        # 3. Create new tracks for unmatched detections
+
         for det_idx in unmatched_det_indices:
             bbox, class_id, conf = detections[det_idx]
             if conf >= WarehouseConfig.MIN_DETECTION_CONFIDENCE:
                 self._create_new_track(class_id, bbox, conf)
 
-        # 4. Update track states and check for line crossings
         for tid in list(self.tracks.keys()):
             track = self.tracks[tid]
             self._update_track_state(track)
@@ -209,8 +191,7 @@ class ProductTracker:
 
     def _update_track_state(self, track: Track):
         """Manages the lifecycle of a track through its state machine."""
-        # Promote a TENTATIVE track to CONFIRMED if it has survived long enough.
-        # Deletion is handled by the MAX_MISSES check in the main update loop.
+
         if track.state == 'TENTATIVE' and track.age >= WarehouseConfig.MIN_HITS_TO_CONFIRM:
             track.state = 'CONFIRMED'
             logger.debug(f"Track {track.id} promoted to CONFIRMED.")
@@ -261,46 +242,38 @@ class ProductTracker:
         current_center = track.center
         is_currently_inside = self._is_inside_zone(current_center, counting_zone)
 
-        # Scenario 1: Track enters the counting zone for the first time or re-enters
         if is_currently_inside:
             if track.zone_entry_position is None:
                 logger.debug(f"Track {track.id} entered counting zone at {current_center}.")
                 track.zone_entry_position = current_center
             
-            # If a track that was counted re-enters the zone, reset its count status.
-            # This allows it to be counted again if it exits in the opposite direction.
+
             if track.state == 'COUNTED':
                 logger.info(f"Track {track.id} has re-entered the zone. Resetting count status.")
                 track.state = 'CONFIRMED'
                 track.counted_direction = None
                 track.counted_timestamp = None
 
-        # Scenario 2: Track was inside and has now exited the zone
+
         elif not is_currently_inside and track.zone_entry_position is not None:
             
-            # First, check for a post-count cooldown.
-            # Has enough time passed since this specific track was last counted?
             if track.counted_timestamp and (ts_obj - track.counted_timestamp) < timedelta(seconds=WarehouseConfig.COUNTING_COOLDOWN_SECONDS):
-                # It's too soon to count this track again. We simply ignore this exit event.
+
                 return
 
             entry_x, _ = track.zone_entry_position
             exit_x, _ = current_center
             
-            # Check for minimal travel distance to prevent counting minor wiggles
             if abs(exit_x - entry_x) < (frame_w * 0.05): # Less than 5% width travel
                 logger.debug(f"Track {track.id} exited zone but moved too little to count. Resetting entry point.")
                 track.zone_entry_position = None # Reset to allow re-entry without counting
                 return
 
-            # Determine direction based on entry and exit points
             direction = 'out' if exit_x > entry_x else 'in'
 
-            # Get product name and status
             product_name = WarehouseConfig.PALLETE_CLASS_MAP.get(track.class_id, "Unknown")
             event_status = "unloaded" if direction == 'out' else "loaded"
             
-            # Register the event. This will set the track's counted_timestamp.
             self._register_event(track, direction, event_status, ts_obj, loc, product_name, frame)
             
             # Reset the track's entry position AFTER a successful count.
@@ -314,22 +287,20 @@ class ProductTracker:
             str: The filename of the saved snapshot, or None on failure.
         """
         try:
-            # Sanitize timestamp for filename
             timestamp_str = timestamp_obj.strftime('%Y-%m-%d_%H-%M-%S')
             filename = f"{timestamp_str}_{status}_ID-{track_id}_{product_name}.jpg"
             filepath = os.path.join(self.snapshot_dir, filename)
             
-            # Draw the bounding box on a copy of the frame to not alter the live view
             frame_copy = frame.copy()
             x1, y1, x2, y2 = bbox
-            color = (0, 0, 255)  # Red for snapshot highlight
+            color = (0, 0, 255)  
             cv2.rectangle(frame_copy, (x1, y1), (x2, y2), color, 3)
             cv2.putText(frame_copy, f"Event: {status}", (x1, y1 - 10), 
                        cv2.FONT_HERSHEY_SIMPLEX, 0.9, color, 2)
 
             cv2.imwrite(filepath, frame_copy)
             logger.info(f"Saved snapshot: {filepath}")
-            # Add a special log entry for the event log file
+
             logger.info(f"[EVENT] SNAPSHOT_SAVED: Path={filepath}, TrackID={track_id}")
             return filename
         except Exception as e:
@@ -343,20 +314,15 @@ class ProductTracker:
         track.counted_timestamp = ts_obj
         self.counts[direction] += 1
         
-        # Save snapshot and get the filename
+
         snapshot_filename = self._save_snapshot(frame, track.bbox, ts_obj, event_status, track.id, product_name)
         
         timestamp_str = ts_obj.strftime('%Y-%m-%d %H:%M:%S')
         self.events.append((timestamp_str, event_status, track.id, loc, product_name, snapshot_filename))
         
-        # Standard info log for the console
+
         logger.info(f"Event registered: {event_status.upper()} | Product: {product_name} | Track ID: {track.id}")
-        # Special, more detailed log entry for the event log file
         logger.info(f"[EVENT] PRODUCT_COUNTED: Status={event_status}, Product={product_name}, TrackID={track.id}, Location={loc}")
 
-        
-        # After a short period, allow the track to be counted again if it crosses back.
-        # This is managed by the cooldown check in _check_line_crossing.
-        # For this implementation, we reset its 'counted' status after cooldown.
-        # A more advanced approach might use a separate state or timer.
+ 
         pass
