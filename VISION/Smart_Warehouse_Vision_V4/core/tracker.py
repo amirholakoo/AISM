@@ -3,9 +3,10 @@ Advanced Product Tracking Module using Kalman Filter and State Machine.
 """
 import collections
 from datetime import datetime, timedelta
+import json
 import logging
 import os
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Optional
 import cv2
 import numpy as np
 from filterpy.kalman import KalmanFilter
@@ -13,7 +14,6 @@ from scipy.optimize import linear_sum_assignment
 
 from config.warehouse_config import WarehouseConfig
 
-# Get a logger for this module
 logger = logging.getLogger(__name__)
 
 class Track:
@@ -34,7 +34,7 @@ class Track:
         self.history = collections.deque(maxlen=WarehouseConfig.TRACK_HISTORY_LEN)
         
         self.last_seen_timestamp = datetime.now(WarehouseConfig.TIMEZONE)
-        self.counted_direction = None  
+        self.counted_direction = None  # 'in' or 'out'
         self.counted_timestamp = None
         self.zone_entry_position = None  
 
@@ -42,20 +42,19 @@ class Track:
     def init_kalman_filter(bbox: Tuple[int, int, int, int]) -> KalmanFilter:
         """Initializes a Kalman Filter for a new track."""
         kf = KalmanFilter(dim_x=7, dim_z=4)
+
         kf.F = np.array([[1,0,0,0,1,0,0], [0,1,0,0,0,1,0], [0,0,1,0,0,0,1], [0,0,0,1,0,0,0],
                         [0,0,0,0,1,0,0], [0,0,0,0,0,1,0], [0,0,0,0,0,0,1]], dtype=float)
         kf.H = np.array([[1,0,0,0,0,0,0], [0,1,0,0,0,0,0], [0,0,1,0,0,0,0], [0,0,0,1,0,0,0]], dtype=float)
         
-
         kf.R[2:,2:] *= 10.
-        
+
         kf.P[4:,4:] *= 1000. 
         kf.P *= 10.
 
-        kf.Q[-1,-1] *= 0.1   
-        kf.Q[4:6,4:6] *= 0.1 
+        kf.Q[-1,-1] *= 0.1   # Noise on scale velocity
+        kf.Q[4:6,4:6] *= 0.1 # Noise on x and y velocity
 
-        # Correctly initialize the state vector from the measurement
         z = Track.bbox_to_z(bbox)
         kf.x[:4] = z
         return kf
@@ -68,7 +67,6 @@ class Track:
         self.kf.predict()
         self.age += 1
         self.misses += 1
-
         self.bbox = self.to_bbox()
         self.history.append(self.center)
         return self.bbox
@@ -122,16 +120,24 @@ class ProductTracker:
         """Initialize tracker with empty state."""
         self.reset()
         self.snapshot_dir = "snapshots"
-        if not os.path.exists(self.snapshot_dir):
-            os.makedirs(self.snapshot_dir)
-            logger.info(f"Created snapshots directory at: {self.snapshot_dir}")
+        self.logs_dir = "logs"
+        
+        # Create directories if they don't exist
+        for directory in [self.snapshot_dir, self.logs_dir]:
+            if not os.path.exists(directory):
+                os.makedirs(directory)
+                logger.info(f"Created directory at: {directory}")
+        
+        # Session metadata for auto-save
+        self.session_location = "Unknown"
+        self.auto_save_enabled = True
 
     def reset(self):
         """Reset all tracking state for a new session."""
         self.tracks: Dict[int, Track] = {}
         self.next_id: int = 0
         self.counts: Dict[str, int] = {'in': 0, 'out': 0}
-        self.events: List[Tuple[str, str, int, str, str]] = [] 
+        self.events: List[Tuple[str, str, int, str, str, str]] = [] 
         self.session_start_time: str = datetime.now(WarehouseConfig.TIMEZONE).strftime('%Y-%m-%d %H:%M:%S')
         self.last_event_time: Dict[str, datetime] = {}
 
@@ -146,7 +152,7 @@ class ProductTracker:
                 logger.debug(f"Track {tid} removed due to high misses ({track.misses}).")
                 if tid in self.tracks:
                     del self.tracks[tid]
-
+        
         unmatched_det_indices = set(range(len(detections)))
         
         if detections and len(self.tracks) > 0:
@@ -161,15 +167,15 @@ class ProductTracker:
                 matched_indices = set()
                 # Update matched tracks
                 for track_idx, det_idx in zip(track_indices, det_indices):
+                    # Check IoU threshold to prevent matching distant objects
                     if iou_matrix[track_idx, det_idx] >= WarehouseConfig.IOU_THRESHOLD:
                         tid = list(self.tracks.keys())[track_idx]
                         bbox, class_id, conf = detections[det_idx]
                         self.tracks[tid].update(bbox, conf)
-                        self.tracks[tid].class_id = class_id 
+                        self.tracks[tid].class_id = class_id # Update class ID on re-detection
                         matched_indices.add(det_idx)
                 
                 unmatched_det_indices = unmatched_det_indices - matched_indices
-
 
         for det_idx in unmatched_det_indices:
             bbox, class_id, conf = detections[det_idx]
@@ -240,12 +246,12 @@ class ProductTracker:
         current_center = track.center
         is_currently_inside = self._is_inside_zone(current_center, counting_zone)
 
+
         if is_currently_inside:
             if track.zone_entry_position is None:
                 logger.debug(f"Track {track.id} entered counting zone at {current_center}.")
                 track.zone_entry_position = current_center
             
-
             if track.state == 'COUNTED':
                 logger.info(f"Track {track.id} has re-entered the zone. Resetting count status.")
                 track.state = 'CONFIRMED'
@@ -268,15 +274,21 @@ class ProductTracker:
 
             direction = 'out' if exit_x > entry_x else 'in'
 
+            # Get product name and status
             product_name = WarehouseConfig.PALLETE_CLASS_MAP.get(track.class_id, "Unknown")
             event_status = "unloaded" if direction == 'out' else "loaded"
-
+            
             self._register_event(track, direction, event_status, ts_obj, loc, product_name, frame)
             
             track.zone_entry_position = None
 
     def _save_snapshot(self, frame, bbox, timestamp_obj, status, track_id, product_name):
-        """Saves a snapshot of the frame when an event occurs."""
+        """
+        Saves a snapshot of the frame when an event occurs.
+        
+        Returns:
+            str: The filename of the saved snapshot, or None on failure.
+        """
         try:
             timestamp_str = timestamp_obj.strftime('%Y-%m-%d_%H-%M-%S')
             filename = f"{timestamp_str}_{status}_ID-{track_id}_{product_name}.jpg"
@@ -284,16 +296,19 @@ class ProductTracker:
             
             frame_copy = frame.copy()
             x1, y1, x2, y2 = bbox
-            color = (0, 0, 255)  # Red for snapshot highlight
+            color = (0, 0, 255)  
             cv2.rectangle(frame_copy, (x1, y1), (x2, y2), color, 3)
             cv2.putText(frame_copy, f"Event: {status}", (x1, y1 - 10), 
                        cv2.FONT_HERSHEY_SIMPLEX, 0.9, color, 2)
 
             cv2.imwrite(filepath, frame_copy)
             logger.info(f"Saved snapshot: {filepath}")
+            # Add a special log entry for the event log file
             logger.info(f"[EVENT] SNAPSHOT_SAVED: Path={filepath}, TrackID={track_id}")
+            return filename
         except Exception as e:
             logger.error(f"Failed to save snapshot: {e}", exc_info=True)
+            return None
 
     def _register_event(self, track: Track, direction: str, event_status: str, ts_obj, loc, product_name, frame):
         """Handles the logic for registering a counting event."""
@@ -302,12 +317,119 @@ class ProductTracker:
         track.counted_timestamp = ts_obj
         self.counts[direction] += 1
         
-        timestamp_str = ts_obj.strftime('%Y-%m-%d %H:%M:%S')
-        self.events.append((timestamp_str, event_status, track.id, loc, product_name))
+        # Save snapshot and get the filename
+        snapshot_filename = self._save_snapshot(frame, track.bbox, ts_obj, event_status, track.id, product_name)
         
+        timestamp_str = ts_obj.strftime('%Y-%m-%d %H:%M:%S')
+        self.events.append((timestamp_str, event_status, track.id, loc, product_name, snapshot_filename))
+        
+        # Standard info log for the console
         logger.info(f"Event registered: {event_status.upper()} | Product: {product_name} | Track ID: {track.id}")
+        # Special, more detailed log entry for the event log file
         logger.info(f"[EVENT] PRODUCT_COUNTED: Status={event_status}, Product={product_name}, TrackID={track.id}, Location={loc}")
-
-        self._save_snapshot(frame, track.bbox, ts_obj, event_status, track.id, product_name)
         
         pass
+
+    def set_session_location(self, location: str = "Unknown"):
+        """
+        Set session location for automatic saving.
+        
+        Args:
+            location: Location name for this session
+        """
+        self.session_location = location
+        logger.info(f"Session location set: '{location}'")
+
+    def get_session_summary(self) -> Dict:
+        """
+        Generate session summary dictionary with all events and statistics.
+        
+        Returns:
+            Dict: Complete session summary including events, counts, and metadata
+        """
+        loaded_count = self.counts.get('in', 0)
+        unloaded_count = self.counts.get('out', 0)
+        
+        detailed_product_counts = {"loaded": {}, "unloaded": {}}
+        if self.events:
+            for event_data in self.events:
+                status = event_data[1]  # 'loaded' or 'unloaded'
+                product_type = event_data[4]  # product name
+                if status in detailed_product_counts:
+                    detailed_product_counts[status][product_type] = \
+                        detailed_product_counts[status].get(product_type, 0) + 1
+
+        if not self.events and loaded_count == 0 and unloaded_count == 0:
+            operation_type = "none"
+        elif loaded_count > 0 and unloaded_count == 0:
+            operation_type = "loading"
+        elif unloaded_count > 0 and loaded_count == 0:
+            operation_type = "unloading"
+        else:
+            operation_type = "mixed"
+        
+        start_time = self.events[0][0] if self.events else self.session_start_time
+        end_time = self.events[-1][0] if self.events else datetime.now(WarehouseConfig.TIMEZONE).strftime('%Y-%m-%d %H:%M:%S')
+        
+        total_products = loaded_count + unloaded_count
+
+        events_dict = {
+            idx: {
+                "timestamp": event[0],
+                "status": event[1],
+                "track_id": event[2],
+                "location": event[3],
+                "product_type": event[4],
+                "snapshot": event[5] if len(event) > 5 else None
+            }
+            for idx, event in enumerate(self.events)
+        }
+        
+        return {
+            "total_products": total_products,
+            "operation_type": operation_type,
+            "start_time": start_time,
+            "end_time": end_time,
+            "location": self.session_location,
+            "detailed_product_counts": detailed_product_counts,
+            "events": events_dict,
+            "session_metadata": {
+                "session_start": self.session_start_time,
+                "total_tracks_created": self.next_id,
+                "active_tracks": len(self.tracks)
+            }
+        }
+
+    def auto_save_session(self) -> Optional[str]:
+        """
+        Automatically save session data to JSON file.
+        Simple auto-save that works when session ends.
+        
+        Returns:
+            str: Path to saved file, or None if saving failed
+        """
+        if not self.events:
+            logger.info("No events to save, skipping auto-save.")
+            return None
+            
+        try:
+            timestamp = datetime.now(WarehouseConfig.TIMEZONE).strftime('%Y%m%d_%H%M%S')
+            filename = f"session_{timestamp}.json"
+            filepath = os.path.join(self.logs_dir, filename)
+
+            summary = self.get_session_summary()
+            summary["auto_saved"] = True
+            summary["save_timestamp"] = timestamp
+            
+            json_data = json.dumps(summary, indent=4, ensure_ascii=False)
+            with open(filepath, "w", encoding='utf-8') as f:
+                f.write(json_data)
+            
+            logger.info(f"✅ Session automatically saved to: {filepath}")
+            logger.info(f"[EVENT] SESSION_SAVED: Path={filepath}, TotalProducts={summary['total_products']}")
+            
+            return filepath
+            
+        except Exception as e:
+            logger.error(f"❌ Failed to auto-save session: {e}", exc_info=True)
+            return None

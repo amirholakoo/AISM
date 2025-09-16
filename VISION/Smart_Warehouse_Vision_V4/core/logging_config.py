@@ -2,10 +2,9 @@ import logging
 from logging.handlers import RotatingFileHandler
 import sys
 
-# Custom filter to only allow logs from the 'core' or '__main__' modules
+
 class AppFilter(logging.Filter):
     def filter(self, record):
-        # Also exclude special event logs meant only for the file
         return record.name.startswith('core') and not record.getMessage().startswith('[EVENT]')
 
 class EventFilter(logging.Filter):
@@ -25,6 +24,7 @@ def setup_logging():
         
     root_logger.setLevel(logging.INFO)
 
+
     for handler in root_logger.handlers[:]:
         root_logger.removeHandler(handler)
 
@@ -37,12 +37,13 @@ def setup_logging():
 
     file_handler = RotatingFileHandler(
         'warehouse_events.log', 
-        maxBytes=5*1024*1024, # 5 MB
+        maxBytes=5*1024*1024, 
         backupCount=5
     )
     file_handler.setLevel(logging.INFO)
     file_handler.setFormatter(file_formatter)
-    file_handler.addFilter(EventFilter()) 
+    file_handler.addFilter(EventFilter())
+
 
     stream_handler = logging.StreamHandler(sys.stdout)
     stream_handler.setLevel(logging.INFO)
