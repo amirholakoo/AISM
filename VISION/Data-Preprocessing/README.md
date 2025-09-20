@@ -25,8 +25,8 @@ This project provides a complete pipeline for training and deploying an object d
    ```bash
    ssh admin@YOUR_RPI_IP_ADDRESS
    ```
-   Replace `YOUR_RPI_IP_ADDRESS` with the actual IP (e.g., `192.168.1.100`)
-4. **Enter the password** when prompted (default: `admin`)
+   Replace `YOUR_RPI_IP_ADDRESS` with the actual IP (e.g., `172.16.6.73`)
+4. **Enter the password** when prompted (default: `pi`)
 
 ### 1.2 Record Videos
 
@@ -77,7 +77,7 @@ This project provides a complete pipeline for training and deploying an object d
 2. **Connect to Raspberry Pi**:
    - Host: `YOUR_RPI_IP_ADDRESS` (same as SSH)
    - Username: `admin`
-   - Password: `admin` (or your Pi's password)
+   - Password: `pi` (or your Pi's password)
    - Port: `22`
    - Click "Quickconnect"
 
@@ -149,7 +149,9 @@ If your videos contain unnecessary areas (like walls, irrelevant objects), crop 
    - Install it, then run the above commands in Command Prompt
 
 2. **Start CVAT**:
+- run this command in ubuntu (wsl2) in terminal
    ```bash
+   cd cvat
    docker compose up -d
    ```
    Wait 5-10 minutes for all services to start
@@ -176,7 +178,7 @@ If your videos contain unnecessary areas (like walls, irrelevant objects), crop 
 2. **Click "Create new task"**
 3. **Fill task details**:
    - Name: `Sack Detection Task 1`
-   - Labels: Click "Add label" → Type `sack` → Click "Done"
+   - Labels: Click "Add label" → Type `sack` → Click "continue"
    - **Important**: Set "Bug tracker" to empty (delete default text)
 
 4. **Upload videos**:
@@ -211,7 +213,7 @@ If your videos contain unnecessary areas (like walls, irrelevant objects), crop 
 1. **Go back to Tasks page** (click "Tasks" in top menu)
 2. **Click on your task name**
 3. **Click "Actions" → "Export task dataset"**
-4. **Select format**: "CVAT for video 1.1"
+4. **Select format**: "CVAT for video 1.1"(click on bottom Save Image)
 5. **Click "OK"**
 6. **Download the ZIP file** when ready
 7. **Extract the ZIP file** to a folder called "cvat_annotations"
@@ -234,12 +236,14 @@ If your videos contain unnecessary areas (like walls, irrelevant objects), crop 
 ### 6.2 Download Project Files
 
 1. **Create project folder**:
+   Create New Folder and Rename it "sack_detection"
+   or
    ```bash
    mkdir C:\sack_detection
    cd C:\sack_detection
    ```
 
-2. **Copy all Python scripts** to this folder:
+2. **Copy all Python scripts**  and go to this folder:
    - `convert_to_yolov8_obb.py`
    - `clean_and_renumber_dataset.py`
    - `train_yolov8_obb.py`
@@ -248,7 +252,8 @@ If your videos contain unnecessary areas (like walls, irrelevant objects), crop 
 
 ### 6.3 Create Python Virtual Environment
 
-1. **Create virtual environment**:
+1. **Create virtual environment**:(open windows terminal)
+
    ```bash
    cd C:\sack_detection
    python -m venv env
@@ -263,49 +268,9 @@ If your videos contain unnecessary areas (like walls, irrelevant objects), crop 
 3. **Install required packages**:
    ```bash
    pip install -r requirements.txt
+   or 
+   pip install ultralytics opencv-python pyyaml numpy
    ```
-   **If the above fails or times out, install individually**:
-   ```bash
-   pip install ultralytics opencv-python pyyaml numpy matplotlib pillow lxml tqdm seaborn scipy
-   ```
-
-4. **Test your Python setup**:
-   ```bash
-   python -c "import numpy, yaml, cv2; print('✅ All dependencies installed successfully!')"
-   ```
-   You should see the success message. If not, check your virtual environment activation.
-
----
-
-## Step 6.5: Validate Your Setup
-
-**Before proceeding, let's verify everything is working:**
-
-1. **Test Python environment**:
-   ```bash
-   cd C:\sack_detection
-   venv\Scripts\activate
-   python -c "import numpy, yaml, cv2, os; print('✅ Environment ready!')"
-   ```
-
-2. **Verify required files exist**:
-   ```bash
-   dir annotations.xml
-   dir images
-   dir convert_to_yolov8_obb.py
-   ```
-   All files should be found.
-
-3. **Test script syntax**:
-   ```bash
-   python -m py_compile convert_to_yolov8_obb.py
-   python -m py_compile clean_and_renumber_dataset.py
-   python -m py_compile train_yolov8_obb.py
-   python -m py_compile dataset_stats.py
-   ```
-   No errors should appear.
-
-**If any step fails, resolve the issue before continuing!**
 
 ---
 
@@ -314,25 +279,13 @@ If your videos contain unnecessary areas (like walls, irrelevant objects), crop 
 ### 7.1 Prepare Files
 
 1. **Copy annotation files**:
-   - From your "cvat_annotations" folder, copy `annotations.xml` to `C:\sack_detection\`
-
-2. **Extract images from videos**:
-   - Create folder: `C:\sack_detection\images`
-   - Use a video tool (like VLC or FFmpeg) to extract frames from your videos
-   - **OR** modify the conversion script to handle videos directly
-
-3. **Verify files exist**:
-   ```bash
-   dir annotations.xml
-   dir images
-   ```
-   Both should exist before proceeding to the next step.
+   - From your "cvat_annotations" folder, copy `annotations.xml` and "images" to `C:\sack_detection\`
 
 ### 7.2 Run Conversion Script
 
 1. **Check file names** in `convert_to_yolov8_obb.py`:
    ```python
-   # Line ~275-277, make sure these match your files:
+   # Line ~306-308, make sure these match your files:
    xml_path = "annotations.xml"
    images_dir = "images"
    output_dir = "yolov8_obb_dataset"
@@ -373,22 +326,20 @@ If your videos contain unnecessary areas (like walls, irrelevant objects), crop 
 ### 9.1 Download Pre-trained Model
 
 1. **Download YOLOv8-OBB model**:
-   
-   **For Windows (recommended method)**:
-   - Go to: https://github.com/ultralytics/assets/releases/download/v0.0.0/yolov8n-obb.pt
-   - Right-click and "Save as" to `C:\sack_detection\yolov8n-obb.pt`
-   
-   **Alternative (if you have wget)**:
    ```bash
    wget https://github.com/ultralytics/assets/releases/download/v0.0.0/yolov8n-obb.pt
    ```
+   
+   **If wget doesn't work**:
+   - Go to: https://github.com/ultralytics/assets/releases/download/v0.0.0/yolov8n-obb.pt
+   - Save the file to `C:\sack_detection\`
 
 ### 9.2 Configure Training Parameters
 
 1. **Edit `train_yolov8_obb.py`** if needed:
-   - Line ~182: `dataset_path = "yolov8_obb_cleaned_dataset"`
-   - Line ~183: `epochs = 50` (adjust if needed)
-   - Line ~184: `model_size = 'n'` (n=nano, s=small, m=medium, l=large)
+   - Line ~189: `dataset_path = "yolov8_obb_cleaned_dataset"`
+   - Line ~190: `epochs = 50` (adjust if needed)
+   - Line ~191: `model_size = 'n'` (n=nano, s=small, m=medium, l=large)
 
 ### 9.3 Start Training
 
@@ -399,20 +350,20 @@ If your videos contain unnecessary areas (like walls, irrelevant objects), crop 
 
 2. **Monitor progress**:
    - Training will show progress bars and metrics
-   - Results will be saved in `yolov8_obb_training/sack_detection/`
-   - Best model will be saved as `weights/best.pt`
+   - Results will be saved in `yolov8_obb_training\sack_detection\`
+   - Best model will be saved as `weights\best.pt`
 
 ---
 
 ## Step 10: Test Your Model
-
+you can get a test image in val images in "sack_detection\yolov8_obb_cleaned_dataset\val\"
 1. **Test the trained model**:
    ```bash
-   yolo obb predict model=yolov8_obb_training/sack_detection/weights/best.pt source=path/to/test/image.jpg
+   yolo obb predict model=yolov8_obb_training\sack_detection\weights\best.pt source=path\to\test\image.png
    ```
 
 2. **Check results**:
-   - Predictions will be saved in `runs/obb/predict/`
+   - Predictions will be saved in `runs\obb\predict\`
    - Open the images to see detected sacks with oriented bounding boxes
 
 ---
@@ -423,13 +374,9 @@ If your videos contain unnecessary areas (like walls, irrelevant objects), crop 
 
 1. **"Permission denied" errors**: Run Command Prompt as Administrator
 2. **"Module not found"**: Make sure virtual environment is activated
-3. **"pip install timeout"**: Install packages individually with `pip install numpy opencv-python` etc.
-4. **"annotations.xml not found"**: Verify file was copied from CVAT export
-5. **"images directory not found"**: Create the images folder and extract video frames
-6. **Docker not starting**: Restart Docker Desktop from system tray
-7. **CVAT not loading**: Wait longer, or restart Docker containers
-8. **Training fails**: Check if you have enough GPU memory, reduce batch size
-9. **"wget not recognized"**: Use browser download method for Windows
+3. **Docker not starting**: Restart Docker Desktop from system tray
+4. **CVAT not loading**: Wait longer, or restart Docker containers
+5. **Training fails**: Check if you have enough GPU memory, reduce batch size
 
 ### File Structure Check:
 
