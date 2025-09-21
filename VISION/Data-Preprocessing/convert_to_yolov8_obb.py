@@ -204,13 +204,13 @@ def create_yolo_dataset(annotations_data: Dict, images_dir: str,
     image_files.sort(key=lambda x: x[0])
     
     # Ensure we have exactly 2024 images (frame_000000 to frame_002023)
-    expected_frames = set(range(2024))  # 0 to 2023
-    found_frames = set(frame_num for frame_num, _ in image_files)
-    missing_frames = expected_frames - found_frames
+    # expected_frames = set(range(2024))  # 0 to 2023
+    # found_frames = set(frame_num for frame_num, _ in image_files)
+    # missing_frames = expected_frames - found_frames
     
-    if missing_frames:
-        print(f"Warning: Missing {len(missing_frames)} images from expected 2024 frames")
-        print(f"Missing frame numbers: {sorted(list(missing_frames))[:10]}...")  # Show first 10
+    # if missing_frames:
+    #     print(f"Warning: Missing {len(missing_frames)} images from expected 2024 frames")
+    #     print(f"Missing frame numbers: {sorted(list(missing_frames))[:10]}...")  # Show first 10
     
     print(f"Total images found: {len(image_files)}")
     print(f"Images with annotations: {len(annotations_data['annotations'])}")
