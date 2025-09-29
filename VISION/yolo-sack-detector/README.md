@@ -5,7 +5,6 @@ YOLOe Detector is a real-time object detection system designed for detecting sac
 ## Features
 - Real-time sack detection using YOLOv8 OBB models
 - Multi-threaded architecture for improved FPS
-- Support for both GUI display and headless mode
 - FPS calculation and display
 - Configurable confidence threshold
 - Oriented bounding box visualization
