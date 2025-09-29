@@ -1,4 +1,4 @@
-# YOLOe Detector
+# YOLO Sack Detector
 
 YOLOe Detector is a real-time object detection system designed for detecting sacks using YOLO models on Raspberry Pi with Picamera2. It supports oriented bounding boxes (OBB) for improved accuracy in detecting rotated objects. The system uses multi-threading to optimize performance, separating frame capture and detection processes.
 
