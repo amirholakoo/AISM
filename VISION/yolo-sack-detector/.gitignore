@@ -1,0 +1,14 @@
+# Python environments
+env/
+venv/
+.venv/
+
+# OS specific
+.DS_Store
+Thumbs.db
+
+# Additional Python ignores
+*.pyo
+*.pyd
+__pycache__/
+*.pyc
