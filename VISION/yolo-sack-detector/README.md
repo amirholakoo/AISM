@@ -1,6 +1,6 @@
 # YOLO Sack Detector
 
-YOLOe Detector is a real-time object detection system designed for detecting sacks using YOLO models on Raspberry Pi with Picamera2. It supports oriented bounding boxes (OBB) for improved accuracy in detecting rotated objects. The system uses multi-threading to optimize performance, separating frame capture and detection processes.
+YOLO-OBB Detector is a real-time object detection system designed for detecting sacks using YOLO models on Raspberry Pi with Picamera2. It supports oriented bounding boxes (OBB) for improved accuracy in detecting rotated objects. The system uses multi-threading to optimize performance, separating frame capture and detection processes.
 
 ## Features
 - Real-time sack detection using YOLOv8 OBB models
@@ -50,7 +50,7 @@ sudo apt install -y python3-picamera2
 2) Create a virtual environment (recommended):
    ```
    python3 -m venv .env
-   source .venv/bin/activate  # on Windows: .env\Scripts\activate
+   source .env/bin/activate  # on Windows: .env\Scripts\activate
    ```
 
 3) Install packages:
