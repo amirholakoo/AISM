@@ -1,0 +1,12 @@
+__pycache__
+.vscode
+*.csv
+*.txt
+*.service
+Temperature-Prediction/sensors/Final/24-Hour - V0/Final.py
+Temperature-Prediction/sensors/Final/24-Hour - V0/load.py
+Temperature-Prediction/sensors/Final/24-Hour - V0/load.py
+
+Temperature-Prediction/sensors/Final/24-Hour - V1/Final.py
+Temperature-Prediction/sensors/Final/24-Hour - V1/load.py
+Temperature-Prediction/sensors/Final/24-Hour - V1/load.py
