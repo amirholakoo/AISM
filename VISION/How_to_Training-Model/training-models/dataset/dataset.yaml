@@ -1,0 +1,18 @@
+path: D:\akhal-export\dataset
+train: train/images
+val: val/images
+nc: 11
+names:
+  0: forklift
+  1: sulfate
+  2: pack
+  3: fructose
+  4: paper-roll
+  5: akhal
+  6: sude
+  7: akd
+  8: pickup
+  9: person
+  10: wheel-barrow
+  
+
